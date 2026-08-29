@@ -426,6 +426,26 @@
 
 <div class="tool-modal" id="toolModal"><div class="tool-modal-box"><button class="modal-close" id="toolClose">×</button><div id="toolModalContent"></div></div></div>
 
+<div class="modal file-center-modal" id="fileCenterModal" aria-hidden="true">
+  <div class="file-center-box">
+    <button class="modal-close" id="fileCenterClose" type="button" aria-label="Tutup">×</button>
+    <span class="eyebrow">FILE CENTER • ADMIN</span>
+    <h2>Tambah File / Link</h2>
+    <p class="file-center-subtitle">Tambahkan file seperti saat mengunggah tugas, tanpa popup “website menyatakan”.</p>
+    <label class="file-center-upload">
+      <span class="file-center-upload-icon">＋</span>
+      <span><b>Pilih file dari perangkat</b><small>PDF, DOC, PPT, gambar, ZIP • maksimal 2,5 MB</small></span>
+      <input id="fileCenterUpload" type="file">
+    </label>
+    <div class="file-center-or"><span>atau</span></div>
+    <div class="file-center-fields">
+      <label>Nama file / materi<input id="fileCenterTitle" type="text" placeholder="Contoh: Modul Jaringan Dasar"></label>
+      <label>Jenis<select id="fileCenterType"><option>Dokumen</option><option>PDF</option><option>Modul</option><option>Link</option><option>Materi</option></select></label>
+      <label>URL / Google Drive <span>(opsional)</span><input id="fileCenterUrl" type="url" placeholder="https://..."></label>
+    </div>
+    <div class="file-center-actions"><button class="mini-btn" id="fileCenterCancel" type="button">Batal</button><button class="btn btn-primary" id="fileCenterSave" type="button">＋ Tambahkan</button></div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <div class="modal task-input-modal" id="taskInputModal" aria-hidden="true">
