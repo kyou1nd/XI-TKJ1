@@ -1,0 +1,50 @@
+SETUP ABSEN FOTO → GOOGLE DRIVE
+
+PENTING:
+- Website ini tetap frontend-only dan tidak memakai database.
+- Browser TIDAK boleh menulis langsung ke Google Drive pribadi.
+- Agar foto siswa benar-benar masuk Drive admin, diperlukan Google Apps Script sebagai bridge Google.
+- Ini bukan server milikmu dan tidak memakai database; penyimpanannya langsung berupa file di Google Drive.
+
+1. Buat folder baru di Google Drive, misalnya:
+   XI TKJ 1 - Absensi Foto
+
+2. Buka folder tersebut dan salin Folder ID dari URL:
+   https://drive.google.com/drive/folders/FOLDER_ID
+
+3. Buka Google Apps Script:
+   https://script.google.com/
+   Buat project baru.
+
+4. Salin isi:
+   google-apps-script/Code.gs
+   ke project tersebut.
+
+5. Ganti:
+   PASTE_GOOGLE_DRIVE_FOLDER_ID_HERE
+   dengan Folder ID Drive kamu.
+
+6. Deploy → New deployment → Web app.
+   Execute as: Me
+   Who has access: Anyone
+
+7. Salin URL Web App yang berakhiran /exec.
+
+8. Buka:
+   drive-config.js
+   lalu isi:
+   window.DRIVE_UPLOAD_URL = "URL_WEB_APP_KAMU";
+
+9. Upload seluruh folder WebClass ke hosting/GitHub Pages.
+
+HASIL:
+- Sebelum login siswa: menu "Absen Foto Muka" tidak muncul.
+- Setelah login siswa: menu "Absen Foto Muka" muncul di ⋮.
+- Siswa membuka kamera → foto → Kirim Absensi.
+- Foto disimpan lokal sebagai fallback dan dikirim ke folder Drive melalui Apps Script.
+- Admin → Control Panel → Cek Absensi.
+- Admin melihat foto yang sudah masuk dan daftar siswa yang belum absen.
+- Data absensi per hari. Tidak ada database.
+
+CATATAN KEAMANAN:
+Login website saat ini memang lokal/frontend-only. Karena itu jangan menganggap foto absensi sebagai bukti identitas biometrik yang aman. Fitur ini hanya mengambil foto wajah sebagai bukti kehadiran.
