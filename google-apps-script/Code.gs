@@ -18,12 +18,19 @@ function doPost(e){
     if(p.action!=='uploadFaceAttendance') return json_({ok:false,error:'Unknown action'});
     const date=clean_(p.date), nisn=clean_(p.nisn), name=clean_(p.name), time=clean_(p.time);
     if(!date||!nisn||!p.imageData) return json_({ok:false,error:'Data foto tidak lengkap.'});
-    const filename='XI_TKJ1_FACE_'+date+'_'+nisn+'.jpg';
+    const filename='XI_TKJ1_FACE_'+date+'_'+time+'_'+clean_(name||'Siswa')+'.jpg';
     const folder=folder_();
-    const old=folder.getFilesByName(filename);
-    if(old.hasNext()){
-      const f=old.next();
-      return json_({ok:true,duplicate:true,id:f.getId(),url:f.getUrl()});
+    const existing=folder.getFiles();
+    while(existing.hasNext()){
+      const f=existing.next();
+      const desc=f.getDescription()||'';
+      if(!desc) continue;
+      try{
+        const m=JSON.parse(desc);
+        if(m.type==='face-attendance' && m.date===date && m.nisn===nisn){
+          return json_({ok:true,duplicate:true,id:f.getId(),url:f.getUrl()});
+        }
+      }catch(_){}
     }
     const bytes=Utilities.base64Decode(String(p.imageData).replace(/^data:image\/\w+;base64,/,''));
     const blob=Utilities.newBlob(bytes,'image/jpeg',filename);
