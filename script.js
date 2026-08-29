@@ -389,12 +389,42 @@ function adminRender(tab='overview'){
  }
  else if(tab==='face-attendance'){
   const dateKey=localDateKey(), accounts=window.__CLASS_ACCOUNTS||[], local=getFaceAttendanceLocal(dateKey);
-  c.innerHTML=`<div class="admin-head-row"><div><h3>Cek Absensi Foto Muka</h3><p class="admin-help">Daftar foto yang masuk hari ini dan siswa yang belum mengirim foto.</p></div><span class="attendance-date">${dateKey}</span></div>
-  <div class="face-admin-summary"><div><b>${Object.keys(local).length}</b><span>Sudah absen foto</span></div><div><b>${Math.max(0,accounts.length-Object.keys(local).length)}</b><span>Belum absen</span></div></div>
-  <div class="face-admin-grid"><section class="face-admin-card"><div class="admin-card-head"><h4>Foto Absensi Masuk</h4><button class="mini-btn" id="faceRefreshDrive">↻ Refresh Drive</button></div><div id="faceAdminPhotos" class="face-admin-photos">${renderFaceAdminPhotos(local)}</div></section>
-  <section class="face-admin-card"><div class="admin-card-head"><h4>Belum Absen</h4></div><div class="face-unchecked-list">${accounts.filter(a=>!local[a.nisn]).map(a=>`<div class="face-unchecked-item"><span class="face-admin-avatar">${escapeHTML((a.first||a.name).slice(0,2).toUpperCase())}</span><div><b>${escapeHTML(a.name)}</b><small>${escapeHTML(a.nisn)}</small></div><span>Belum</span></div>`).join('')||'<div class="face-empty">Semua siswa sudah absen foto hari ini.</div>'}</div></section></div>
-  <p class="admin-help face-drive-help">${DRIVE_UPLOAD_URL?'Google Drive: aktif':'Google Drive: belum dikonfigurasi. Tambahkan URL Web App Google Apps Script di drive-config.js.'}</p>`;
+  const checked=Object.keys(local).length;
+  const total=accounts.length;
+  const pending=Math.max(0,total-checked);
+  c.innerHTML=`
+  <div class="face-admin-shell">
+    <div class="face-admin-hero">
+      <div class="face-admin-title">
+        <span class="eyebrow">ADMIN • ABSENSI HARIAN</span>
+        <h3>Cek Absensi Foto Muka</h3>
+        <p>Pantau foto yang sudah masuk ke Google Drive dan langsung lihat siapa yang belum melakukan absensi.</p>
+      </div>
+      <div class="face-admin-date"><span>HARI INI</span><b>${dateKey}</b><small>Data diperbarui dari Drive</small></div>
+    </div>
+    <div class="face-admin-stats">
+      <div class="face-stat"><span class="face-stat-icon">✓</span><div><b>${checked}</b><small>Sudah absen</small></div></div>
+      <div class="face-stat"><span class="face-stat-icon pending">!</span><div><b>${pending}</b><small>Belum absen</small></div></div>
+      <div class="face-stat"><span class="face-stat-icon total">#</span><div><b>${total}</b><small>Total siswa</small></div></div>
+    </div>
+    <div class="face-admin-toolbar">
+      <div><b>Absensi ${dateKey}</b><small>Klik foto untuk melihat ukuran penuh.</small></div>
+      <button class="face-refresh-btn" id="faceRefreshDrive"><span>↻</span> Refresh Data</button>
+    </div>
+    <div class="face-admin-grid">
+      <section class="face-admin-card face-admin-photo-card">
+        <div class="face-admin-card-head"><div><span class="card-kicker">SUDAH ABSEN</span><h4>Foto Absensi Masuk</h4></div><span class="face-count-pill">${checked} foto</span></div>
+        <div id="faceAdminPhotos" class="face-admin-photos">${renderFaceAdminPhotos(local)}</div>
+      </section>
+      <section class="face-admin-card face-admin-missing-card">
+        <div class="face-admin-card-head"><div><span class="card-kicker">PERLU DICEK</span><h4>Belum Absen</h4></div><span class="face-count-pill warning">${pending}</span></div>
+        <div class="face-unchecked-list">${accounts.filter(a=>!local[a.nisn]).map(a=>`<div class="face-unchecked-item"><span class="face-admin-avatar">${escapeHTML((a.first||a.name).slice(0,2).toUpperCase())}</span><div><b>${escapeHTML(a.name)}</b><small>${escapeHTML(a.nisn)}</small></div><span class="face-missing-badge">Belum</span></div>`).join('')||'<div class="face-empty success">✓ Semua siswa sudah absen foto hari ini.</div>'}</div>
+      </section>
+    </div>
+    <div class="face-drive-status ${DRIVE_UPLOAD_URL?'online':'offline'}"><span></span><div><b>${DRIVE_UPLOAD_URL?'Google Drive terhubung':'Google Drive belum terhubung'}</b><small>${DRIVE_UPLOAD_URL?'Foto absensi dibaca langsung dari folder Drive admin.':'Periksa drive-config.js untuk mengaktifkan sinkronisasi.'}</small></div></div>
+  </div>`;
   c.querySelector('#faceRefreshDrive')?.addEventListener('click',()=>loadDriveFaceAttendance(dateKey,true));
+  c.querySelectorAll('.face-admin-photo[data-src]').forEach(el=>el.addEventListener('click',()=>openFacePhotoViewer(el.dataset.src,el.dataset.meta||'')));
   if(!window.__faceDriveSkipNextLoad){ loadDriveFaceAttendance(dateKey,false); } else { window.__faceDriveSkipNextLoad=false; }
  }
  else if(tab==='finance')c.innerHTML=`<h3>Kelola Kas Kelas</h3><p class="admin-help">Atur saldo, total pemasukan, dan total pengeluaran. Nilai disimpan lokal.</p><div class="admin-form-grid"><label>Saldo kas<input type="number" id="cashBal" value="${Number(cash.balance||0)}"></label><label>Total pemasukan<input type="number" id="cashInc" value="${Number(cash.income||0)}"></label><label>Total pengeluaran<input type="number" id="cashExp" value="${Number(cash.expense||0)}"></label><label>Catatan kas<input id="cashNote" value="${escapeHTML(cash.note||'Data kas kelas')}"></label></div><div class="admin-save-row"><button class="btn btn-primary" id="saveFinanceCfg">Simpan kas</button></div>`;
@@ -945,8 +975,13 @@ async function loadDriveFaceAttendance(dateKey,force=false,checkNisn=''){
  }catch(e){/* Drive optional: local mode continues */ }
 }
 function renderFaceAdminPhotos(data){
- const entries=Object.values(data||{});if(!entries.length)return '<div class="face-empty">Belum ada foto absensi yang masuk hari ini.</div>';
- return entries.sort((a,b)=>(a.time||'').localeCompare(b.time||'')).map(r=>`<article class="face-admin-photo"><img src="${escapeHTML(r.image||r.thumbnail||'')}" alt="Foto absensi ${escapeHTML(r.name||r.nisn||'')}"><div><b>${escapeHTML(r.name||'Siswa')}</b><small>${escapeHTML(r.time||'')} • ${escapeHTML(r.source==='drive'?'Google Drive':'Perangkat')}</small></div></article>`).join('');
+ const entries=Object.values(data||{});
+ if(!entries.length)return '<div class="face-empty"><strong>Belum ada foto</strong><span>Foto siswa yang berhasil dikirim akan muncul di sini.</span></div>';
+ return entries.sort((a,b)=>(a.time||'').localeCompare(b.time||'')).map(r=>{
+   const src=r.image||r.thumbnail||r.url||'';
+   const meta=(r.name||'Siswa')+' • '+(r.time||'Waktu tidak tersedia');
+   return `<button type="button" class="face-admin-photo" data-src="${escapeHTML(src)}" data-meta="${escapeHTML(meta)}"><span class="face-admin-photo-image"><img src="${escapeHTML(src)}" alt="Foto ${escapeHTML(r.name||'siswa')}" loading="lazy"></span><span class="face-admin-photo-info"><span class="face-photo-status">ABSEN FOTO</span><b>${escapeHTML(r.name||'Siswa')}</b><small>${escapeHTML(r.time||'Waktu tidak tersedia')}</small><em>Ketuk untuk buka foto</em></span><span class="face-photo-arrow">↗</span></button>`;
+ }).join('');
 }
 
 /* Sync the student-only menu item with the existing account session. */
