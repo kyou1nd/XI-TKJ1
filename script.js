@@ -35,13 +35,15 @@
 document.getElementById("year").textContent=new Date().getFullYear();
 
 const themeButton=document.getElementById("themeButton");
-if(localStorage.getItem("xi-theme")==="dark"){document.body.classList.add("dark");themeButton.textContent="☾"}
-themeButton.addEventListener("click",()=>{
+if(themeButton){
+ if(localStorage.getItem("xi-theme")==="dark"){document.body.classList.add("dark");themeButton.textContent="☾"}
+ themeButton.addEventListener("click",()=>{
  document.body.classList.toggle("dark");
  const dark=document.body.classList.contains("dark");
  themeButton.textContent=dark?"☾":"☀";
  localStorage.setItem("xi-theme",dark?"dark":"light");
-});
+ });
+}
 
 const menuButton=document.getElementById("menuButton"),mobileMenu=document.getElementById("mobileMenu");
 menuButton?.addEventListener("click",e=>{e.stopPropagation();mobileMenu?.classList.toggle("show")});
@@ -389,42 +391,12 @@ function adminRender(tab='overview'){
  }
  else if(tab==='face-attendance'){
   const dateKey=localDateKey(), accounts=window.__CLASS_ACCOUNTS||[], local=getFaceAttendanceLocal(dateKey);
-  const checked=Object.keys(local).length;
-  const total=accounts.length;
-  const pending=Math.max(0,total-checked);
-  c.innerHTML=`
-  <div class="face-admin-shell">
-    <div class="face-admin-hero">
-      <div class="face-admin-title">
-        <span class="eyebrow">ADMIN • ABSENSI HARIAN</span>
-        <h3>Cek Absensi Foto Muka</h3>
-        <p>Pantau foto yang sudah masuk ke Google Drive dan langsung lihat siapa yang belum melakukan absensi.</p>
-      </div>
-      <div class="face-admin-date"><span>HARI INI</span><b>${dateKey}</b><small>Data diperbarui dari Drive</small></div>
-    </div>
-    <div class="face-admin-stats">
-      <div class="face-stat"><span class="face-stat-icon">✓</span><div><b>${checked}</b><small>Sudah absen</small></div></div>
-      <div class="face-stat"><span class="face-stat-icon pending">!</span><div><b>${pending}</b><small>Belum absen</small></div></div>
-      <div class="face-stat"><span class="face-stat-icon total">#</span><div><b>${total}</b><small>Total siswa</small></div></div>
-    </div>
-    <div class="face-admin-toolbar">
-      <div><b>Absensi ${dateKey}</b><small>Klik foto untuk melihat ukuran penuh.</small></div>
-      <button class="face-refresh-btn" id="faceRefreshDrive"><span>↻</span> Refresh Data</button>
-    </div>
-    <div class="face-admin-grid">
-      <section class="face-admin-card face-admin-photo-card">
-        <div class="face-admin-card-head"><div><span class="card-kicker">SUDAH ABSEN</span><h4>Foto Absensi Masuk</h4></div><span class="face-count-pill">${checked} foto</span></div>
-        <div id="faceAdminPhotos" class="face-admin-photos">${renderFaceAdminPhotos(local)}</div>
-      </section>
-      <section class="face-admin-card face-admin-missing-card">
-        <div class="face-admin-card-head"><div><span class="card-kicker">PERLU DICEK</span><h4>Belum Absen</h4></div><span class="face-count-pill warning">${pending}</span></div>
-        <div class="face-unchecked-list">${accounts.filter(a=>!local[a.nisn]).map(a=>`<div class="face-unchecked-item"><span class="face-admin-avatar">${escapeHTML((a.first||a.name).slice(0,2).toUpperCase())}</span><div><b>${escapeHTML(a.name)}</b><small>${escapeHTML(a.nisn)}</small></div><span class="face-missing-badge">Belum</span></div>`).join('')||'<div class="face-empty success">✓ Semua siswa sudah absen foto hari ini.</div>'}</div>
-      </section>
-    </div>
-    <div class="face-drive-status ${DRIVE_UPLOAD_URL?'online':'offline'}"><span></span><div><b>${DRIVE_UPLOAD_URL?'Google Drive terhubung':'Google Drive belum terhubung'}</b><small>${DRIVE_UPLOAD_URL?'Foto absensi dibaca langsung dari folder Drive admin.':'Periksa drive-config.js untuk mengaktifkan sinkronisasi.'}</small></div></div>
-  </div>`;
+  c.innerHTML=`<div class="admin-head-row"><div><h3>Cek Absensi Foto Muka</h3><p class="admin-help">Daftar foto yang masuk hari ini dan siswa yang belum mengirim foto.</p></div><span class="attendance-date">${dateKey}</span></div>
+  <div class="face-admin-summary"><div><b>${Object.keys(local).length}</b><span>Sudah absen foto</span></div><div><b>${Math.max(0,accounts.length-Object.keys(local).length)}</b><span>Belum absen</span></div></div>
+  <div class="face-admin-grid"><section class="face-admin-card"><div class="admin-card-head"><h4>Foto Absensi Masuk</h4><button class="mini-btn" id="faceRefreshDrive">↻ Refresh Drive</button></div><div id="faceAdminPhotos" class="face-admin-photos">${renderFaceAdminPhotos(local)}</div></section>
+  <section class="face-admin-card"><div class="admin-card-head"><h4>Belum Absen</h4></div><div class="face-unchecked-list">${accounts.filter(a=>!local[a.nisn]).map(a=>`<div class="face-unchecked-item"><span class="face-admin-avatar">${escapeHTML((a.first||a.name).slice(0,2).toUpperCase())}</span><div><b>${escapeHTML(a.name)}</b><small>${escapeHTML(a.nisn)}</small></div><span>Belum</span></div>`).join('')||'<div class="face-empty">Semua siswa sudah absen foto hari ini.</div>'}</div></section></div>
+  <p class="admin-help face-drive-help">${DRIVE_UPLOAD_URL?'Google Drive: aktif':'Google Drive: belum dikonfigurasi. Tambahkan URL Web App Google Apps Script di drive-config.js.'}</p>`;
   c.querySelector('#faceRefreshDrive')?.addEventListener('click',()=>loadDriveFaceAttendance(dateKey,true));
-  c.querySelectorAll('.face-admin-photo[data-src]').forEach(el=>el.addEventListener('click',()=>openFacePhotoViewer(el.dataset.src,el.dataset.meta||'')));
   if(!window.__faceDriveSkipNextLoad){ loadDriveFaceAttendance(dateKey,false); } else { window.__faceDriveSkipNextLoad=false; }
  }
  else if(tab==='finance')c.innerHTML=`<h3>Kelola Kas Kelas</h3><p class="admin-help">Atur saldo, total pemasukan, dan total pengeluaran. Nilai disimpan lokal.</p><div class="admin-form-grid"><label>Saldo kas<input type="number" id="cashBal" value="${Number(cash.balance||0)}"></label><label>Total pemasukan<input type="number" id="cashInc" value="${Number(cash.income||0)}"></label><label>Total pengeluaran<input type="number" id="cashExp" value="${Number(cash.expense||0)}"></label><label>Catatan kas<input id="cashNote" value="${escapeHTML(cash.note||'Data kas kelas')}"></label></div><div class="admin-save-row"><button class="btn btn-primary" id="saveFinanceCfg">Simpan kas</button></div>`;
@@ -434,7 +406,7 @@ function adminRender(tab='overview'){
  else if(tab==='events')c.innerHTML=`<h3>Kelola Event & Agenda</h3><p class="admin-help">Format tanggal YYYY-MM-DD.</p><textarea id="eventCfg" style="width:100%;min-height:260px;box-sizing:border-box">${escapeHTML(JSON.stringify(cfg.events||[{date:'2026-08-25',title:'Evaluasi Subnetting',type:'Ujian',desc:'Evaluasi konsep IPv4 dan subnetting.'}],null,2))}</textarea><div class="admin-save-row"><button class="btn btn-primary" id="saveEventCfg">Simpan event</button></div>`;
  else if(tab==='links')c.innerHTML=`<h3>Kelola Link Hub</h3><p class="admin-help">Format: title, desc, url.</p><textarea id="linkCfg" style="width:100%;min-height:260px;box-sizing:border-box">${escapeHTML(JSON.stringify(cfg.links||[],null,2))}</textarea><div class="admin-save-row"><button class="btn btn-primary" id="saveLinkCfg">Simpan link</button></div>`;
  else if(tab==='notes')c.innerHTML=`<h3>Catatan Website</h3><p class="admin-help">Catatan pribadi siswa tidak diubah oleh admin. Di sini admin hanya dapat menghapus semua catatan yang tersimpan pada perangkat ini.</p><button class="btn btn-primary" id="clearNotesAdmin">Hapus semua catatan lokal</button>`;
- else if(tab==='files')c.innerHTML=`<div class="admin-head-row file-admin-head"><div><span class="card-kicker">CLASS FILE CENTER</span><h3>File Center</h3><p class="admin-help">Tambah dokumen atau link kelas tanpa dialog bawaan browser.</p></div><button class="btn btn-primary" id="adminAddFileOpen">＋ Tambah File / Link</button></div><div class="file-admin-tip"><span>▣</span><div><b>Kelola materi dengan tampilan yang rapi</b><small>File lokal tersimpan di perangkat ini. Link bisa dibuka dari semua perangkat jika URL-nya publik.</small></div></div><div class="file-admin-preview-list">${loadFiles().map(f=>`<article><span class="file-mini-icon">${f.icon||'📄'}</span><div><b>${escapeHTML(f.title)}</b><small>${escapeHTML(f.type||'Dokumen')}</small></div><span class="file-admin-state">${f.url?'Tersedia':'Belum ada link'}</span></article>`).join('')||'<div class="empty-state">Belum ada file.</div>'}</div>`;document.getElementById('adminAddFileOpen')?.addEventListener('click',()=>openFileCenterModal());
+ else if(tab==='files')c.innerHTML=`<h3>File Center</h3><p class="admin-help">Kelola file/link yang tersedia di perangkat ini.</p><button class="btn btn-primary" onclick="document.getElementById('addFileBtn')?.click()">Tambah file/link</button>`;
  else if(tab==='accounts')c.innerHTML=`<h3>Manage Account</h3><p class="admin-help">Admin dapat mengelola seluruh akun siswa: nama profile, username profile, password, foto, dan data profile.</p><div class="admin-account-list">${(window.__CLASS_ACCOUNTS||[]).map((x,i)=>{const profiles=JSON.parse(localStorage.getItem('xi-account-profiles')||'{}');const photos=JSON.parse(localStorage.getItem('xi-account-photos')||'{}');const prof=Object.assign({displayName:x.name,username:x.first,bio:'Suka mencoba hal baru dan membangun proyek digital sederhana.',interests:'Desain UI, jaringan, dan eksplorasi teknologi',skills:'Troubleshooting, konfigurasi jaringan, dan dasar coding'},profiles[x.nisn]||{});return `<article class="admin-account-row" data-account-row="${escapeHTML(x.nisn)}"><div class="admin-account-avatar">${photos[x.nisn]?`<img src="${photos[x.nisn]}" alt="">`:`${escapeHTML((x.name||'XI').split(/\s+/).filter(Boolean).slice(0,2).map(v=>v[0]).join('').toUpperCase())}`}</div><div class="admin-account-main"><b>${escapeHTML(x.name)}</b><small>NISN: ${escapeHTML(x.nisn)}</small><div class="admin-account-form"><input data-account-name="${escapeHTML(x.nisn)}" value="${escapeHTML(prof.displayName)}" placeholder="Nama profile"><input data-account-username="${escapeHTML(x.nisn)}" value="${escapeHTML(prof.username)}" placeholder="Username profile"><input data-account-password="${escapeHTML(x.nisn)}" type="text" value="${escapeHTML(getPasswordsForAdmin(x.nisn))}" placeholder="Password baru"></div><div class="task-actions"><button class="mini-btn" data-save-account="${escapeHTML(x.nisn)}">Simpan Perubahan</button><button class="mini-btn danger" data-clear-profile="${escapeHTML(x.nisn)}">Hapus Profile</button></div></div></article>`}).join('')}</div>`;
  else if(tab==='students')c.innerHTML=`<h3>Database siswa XI TKJ 1</h3><p class="admin-help">Login menggunakan NISN dari data nominasi siswa kelas 10.</p><table class="admin-table"><tr><th>#</th><th>Nama</th><th>NISN</th></tr>${(window.__CLASS_ACCOUNTS||[]).map((x,i)=>`<tr><td>${i+1}</td><td>${escapeHTML(x.name)}</td><td>${escapeHTML(x.nisn)}</td></tr>`).join('')}</table>`;
  else if(tab==='tasks'){const accounts=window.__CLASS_ACCOUNTS||[];c.innerHTML=`<div class="admin-head-row"><div><h3>Kelola Semua Tugas</h3><p style="color:var(--muted)">Tambah dan hapus tugas hanya dari Control Panel admin. Status pengumpulan siswa ada di setiap tugas.</p></div><div class="task-actions"><button class="btn btn-primary" id="adminAddTask">Tambah Tugas</button><button class="mini-btn danger" id="adminDeleteAllTasks">Hapus Semua</button></div></div><div class="admin-task-list">${tasks.map(t=>{const counts={todo:0,doing:0,done:0};accounts.forEach(a=>{counts[studentTaskStatus(t.id,a.nisn)]++});return `<article class="admin-task-row"><div><b>${escapeHTML(t.title)}</b><small>${escapeHTML(t.subject)} • Deadline ${escapeHTML(t.deadline)}</small><span class="admin-task-status">${escapeHTML(t.status)}</span><div class="admin-task-submission-summary"><span class="submission-badge red">Belum: ${counts.todo}</span><span class="submission-badge yellow">Mengerjakan: ${counts.doing}</span><span class="submission-badge green">Sudah: ${counts.done}</span></div><div class="admin-task-submission-detail" id="submissionDetail-${t.id}"><table><tbody>${accounts.map(a=>{const st=studentTaskStatus(t.id,a.nisn);const label=st==='done'?'Sudah Mengerjakan':st==='doing'?'Masih Mengerjakan':'Belum Mengerjakan';const cls=st==='done'?'green':st==='doing'?'yellow':'red';return `<tr><td><b>${escapeHTML(a.name)}</b><br><small>${escapeHTML(a.nisn)}</small></td><td><span class="submission-badge ${cls}">${label}</span></td><td><button class="mini-btn" data-set-submission="${t.id}" data-nisn="${escapeHTML(a.nisn)}">Ubah</button></td></tr>`}).join('')}</tbody></table></div></div><div class="task-actions"><button class="mini-btn" data-toggle-submissions="${t.id}">Lihat Pengumpulan</button><button class="mini-btn danger" data-delete-admin-task="${t.id}">Hapus</button></div></article>`}).join('')||'<div class="empty-state">Belum ada tugas.</div>'}</div>`;document.getElementById('adminAddTask')?.addEventListener('click',adminAddTask);document.getElementById('adminDeleteAllTasks')?.addEventListener('click',async()=>{if(await openTaskConfirm({title:'Hapus Semua Tugas?',hint:'Semua tugas dan data pengumpulannya akan dihapus. Ini tidak dapat dibatalkan.'})){saveTasks([]);saveTaskSubmissions({});renderTasks();adminRender('tasks');toast('Semua tugas dihapus')}});c.querySelectorAll('[data-toggle-submissions]').forEach(b=>b.addEventListener('click',()=>{document.getElementById('submissionDetail-'+b.dataset.toggleSubmissions)?.classList.toggle('show')}));c.querySelectorAll('[data-set-submission]').forEach(b=>b.addEventListener('click',()=>{const id=Number(b.dataset.setSubmission),nisn=b.dataset.nisn,cur=studentTaskStatus(id,nisn),next=cur==='todo'?'doing':cur==='doing'?'done':'todo';setStudentTaskStatus(id,nisn,next);adminRender('tasks');renderTasks()}));c.querySelectorAll('[data-cycle-admin-task]').forEach(b=>b.addEventListener('click',()=>{cycleTask(Number(b.dataset.cycleAdminTask));adminRender('tasks')}));c.querySelectorAll('[data-delete-admin-task]').forEach(b=>b.addEventListener('click',async()=>{await deleteTask(Number(b.dataset.deleteAdminTask))}));}
@@ -535,25 +507,17 @@ function renderFiles(){
    return `<article class="file-card"><div class="file-icon">${f.icon||'📄'}</div><div><span>${escapeHTML(f.type)}</span><h3>${escapeHTML(f.title)}</h3><p>${f.url?'Tersedia sebagai link.':'Belum ada URL/file yang dipasang.'}</p></div><div class="file-actions">${action}</div></article>`;
  }).join('')||'<div class="empty-state">File tidak ditemukan.</div>';
 }
-function addFile(){ openFileCenterModal(); }
-function openFileCenterModal(){
- const m=document.getElementById('fileCenterModal');if(!m)return;
- m.classList.add('show');m.setAttribute('aria-hidden','false');
- document.getElementById('fileCenterTitle')?.focus();
+async function addFile(){
+ const title=await openTaskInput({title:'Tambah File / Link',hint:'Masukkan nama file atau materi yang ingin ditambahkan.',placeholder:'Nama file / materi...'});
+ if(!title)return;
+ const type=await openTaskInput({title:'Jenis File',hint:'Contoh: PDF, Modul, Dokumen, Link.',placeholder:'PDF / Modul / Link'});
+ if(!type)return;
+ const url=await openTaskInput({title:'Alamat File / Google Drive',hint:'Masukkan URL jika file berada di Google Drive atau website lain. Boleh dikosongkan.',placeholder:'https://...'});
+ const a=loadFiles();
+ a.push({id:Date.now(),title,type,url:url||'',icon:url?'🔗':'📄'});
+ saveFiles(a);renderFiles();toast('File/link berhasil ditambahkan');
 }
-function closeFileCenterModal(){const m=document.getElementById('fileCenterModal');if(m){m.classList.remove('show');m.setAttribute('aria-hidden','true')}}
-function saveFileFromModal(){
- const title=document.getElementById('fileCenterTitle')?.value.trim();
- const type=document.getElementById('fileCenterType')?.value||'Dokumen';
- const url=document.getElementById('fileCenterUrl')?.value.trim()||'';
- if(!title)return toast('Nama file wajib diisi.');
- const fileInput=document.getElementById('fileCenterUpload');
- const file=fileInput?.files?.[0];
- if(file && file.size>2500000)return toast('File terlalu besar. Maksimal 2,5 MB untuk penyimpanan lokal.');
- const finish=(storedUrl,icon)=>{const a=loadFiles();a.push({id:Date.now(),title,type,url:storedUrl||url,icon:icon||((storedUrl||url)?'🔗':'📄'),fileName:file?.name||''});saveFiles(a);renderFiles();closeFileCenterModal();adminRender('files');toast('File berhasil ditambahkan');};
- if(file){const reader=new FileReader();reader.onload=()=>finish(reader.result,'📎');reader.readAsDataURL(file)}else finish('',url?'🔗':'📄');
-}
-document.getElementById('fileSearch')?.addEventListener('input',renderFiles);document.getElementById('addFileBtn')?.addEventListener('click',addFile);document.getElementById('fileCenterClose')?.addEventListener('click',closeFileCenterModal);document.getElementById('fileCenterCancel')?.addEventListener('click',closeFileCenterModal);document.getElementById('fileCenterSave')?.addEventListener('click',saveFileFromModal);document.getElementById('fileCenterModal')?.addEventListener('click',e=>{if(e.target.id==='fileCenterModal')closeFileCenterModal()});renderFiles();window.addFile=addFile;window.openFileCenterModal=openFileCenterModal;
+document.getElementById('fileSearch')?.addEventListener('input',renderFiles);document.getElementById('addFileBtn')?.addEventListener('click',addFile);renderFiles();window.addFile=addFile;
 
 /* Notification Center */
 function buildNotifications(){
@@ -583,7 +547,7 @@ window.exportClassBackup=exportClassBackup;
 /* ===== LOCAL ACCOUNT / LOGIN (NO BACKEND) ===== */
 (()=>{
  const ACCOUNTS=[
-  ['ACH. YUDI CAHYONO','0091774774','Yudi','L'],['ALFI ROISATUL FALIA','0097925888','Alfi','P'],['Alvino Adityas Pratama Putra','0091525445','Alvino','L'],['ALYA NUR FADILAH','0095732347','Alya','P'],['ARINGGA RHEZA PRATAMA','0101780156','Aringga','L'],['AURELIA SIVA AYASHA','0093550534','Aurelia','P'],['AZKYA VIORENTINA FARADITA','0095686817','Azkya','P'],['Cika Ul Umaha','0095557364','Cika','P'],['DESVITA AYU SANIA','0094960010','Desvita','P'],['DINA OKTAVIANA','0094835451','Dina','P'],['ELIS NURDIYANA PUTRI','0106224279','Elis','P'],['ENISA VITA AGUSTIN','0105791283','Enisa','P'],['FERISKA AULIA MAYDA','0093826240','Feriska','P'],['FITA DWI ANGGRAINI','0161051203','Fita','P'],['INES AFINA RAHMA','0108976321','Ines','P'],['IRFAN WAHYU PRASETIO','0099472761','Irfan','L'],['KHARIZMA AIYA ANATASYA','0101262104','Kharizma','P'],['KIRANIA PUTRI SHAHANAZ','3106697354','Kirania','P'],['Lucky Akbar Al Fitroh','0091978972','Lucky','L'],['MARSYA AUFA NUR SALSABILA','0104760053','Marsya','P'],['MIFTAKHUL HUDA','0105926410','Miftakhul','L'],['MOH DZUL FIQRI ALBAQI BILLAH','0098892051','Dzul','L'],['MOHAMAD INDRA SUWARDANA PUTRA','0097925673','Mohamad','L'],['MUHAMAD FARHAN DAFFA','0102581747','Farhan','L'],['MUHAMMAD EZAR MAULANA MALIK','3097578041','Ezar','L'],['MUHAMMAD IMAM VAHRURROZI','3097880104','Imam','L'],['NAILLA NASWA DZAHABIYYAH','0098726453','Nailla','P'],['NENENG ANJARWATI','3099388755','Neneng','P'],['NOVAL DWI ALVINO','3094264029','Noval','L'],["NURISSA'DIYAH IKA FADLIANA",'0095716700','Nurissa','P'],['PUTRI RIDIA ARTIKA SARI','0104859909','Putri','P'],['REYHANA ZEMA ZAHIRA','0095175779','Reyhana','P'],['RISMA FITRI AMELIA','3092616273','Risma','P'],['SAVIRA AULIA DIAS AVRIA','3097497620','Savira','P'],['SHELA FEBRIYANTI','0085567595','Shela','P'],['VEGA AULIA RENATA','0097658461','Vega','P']
+  ['ACH. YUDI CAHYONO','0091774774','Yudi','L'],['ALFI ROISATUL FALIA','0097925888','Alfi','P'],['Alvino Adityas Pratama Putra','0091525445','Alvino','L'],['ALYA NUR FADILAH','0095732347','Alya','P'],['ARINGGA RHEZA PRATAMA','0101780156','Aringga','L'],['AURELIA SIVA AYASHA','0093550534','Aurelia','P'],['AZKYA VIORENTINA FARADITA','0095686817','Azkya','P'],['Cika Ul Umaha','0095557364','Cika','P'],['DESVITA AYU SANIA','0094960010','Desvita','P'],['DINA OKTAVIANA','0094835451','Dina','P'],['ELIS NURDIYANA PUTRI','0106224279','Elis','P'],['ENISA VITA AGUSTIN','0105791283','Enisa','P'],['FERISKA AULIA MAYDA','0093826240','Feriska','P'],['FITA DWI ANGGRAINI','0161051203','Fita','P'],['INES AFINA RAHMA','0108976321','Ines','P'],['IRFAN WAHYU PRASETIO','0099472761','Irfan','L'],['KHARIZMA AIYA ANATASYA','0101262104','Kharizma','P'],['KIRANIA PUTRI SHAHANAZ','3106697354','Kirania','P'],['Lucky Akbar Al Fitroh','0091978972','Lucky','L'],['MARSYA AUFA NUR SALSABILA','0104760053','Marsya','P'],['MIFTAKHUL HUDA','0105926410','Miftakhul','L'],['MOH DZUL FIQRI ALBAQI BILLAH','0098892051','Dzul','L'],['MOHAMAD INDRA SUWARDANA PUTRA','0097925673','Indra','L'],['MUHAMAD FARHAN DAFFA','0102581747','Farhan','L'],['MUHAMMAD EZAR MAULANA MALIK','3097578041','Ezar','L'],['MUHAMMAD IMAM VAHRURROZI','3097880104','Imam','L'],['NAILLA NASWA DZAHABIYYAH','0098726453','Nailla','P'],['NENENG ANJARWATI','3099388755','Neneng','P'],['NOVAL DWI ALVINO','3094264029','Noval','L'],["NURISSA'DIYAH IKA FADLIANA",'0095716700','Nurissa','P'],['PUTRI RIDIA ARTIKA SARI','0104859909','Putri','P'],['REYHANA ZEMA ZAHIRA','0095175779','Reyhana','P'],['RISMA FITRI AMELIA','3092616273','Risma','P'],['SAVIRA AULIA DIAS AVRIA','3097497620','Savira','P'],['SHELA FEBRIYANTI','0085567595','Shela','P'],['VEGA AULIA RENATA','0097658461','Vega','P']
  ].map(([name,nisn,first,gender],i)=>({id:i+1,name,nisn,first,gender,defaultPassword:first+'123'}));
  const ADMIN={username:'admin',password:'Admin2705',name:'Admin XI TKJ 1'};
  const modal=document.getElementById('accountModal'), guest=document.getElementById('accountGuestView'), profile=document.getElementById('accountProfileView');
@@ -640,7 +604,7 @@ function renderAccount(){const u=getSession();syncStudentOnlySections();syncAdmi
  function closeCrop(){cropModal?.classList.remove('show');cropModal?.setAttribute('aria-hidden','true');cropImage=null}
  cropStage?.addEventListener('pointerdown',e=>{if(!cropImage)return;cropDragging=true;cropStartX=e.clientX-cropX;cropStartY=e.clientY-cropY;cropStage.setPointerCapture?.(e.pointerId)});cropStage?.addEventListener('pointermove',e=>{if(!cropDragging)return;cropX=e.clientX-cropStartX;cropY=e.clientY-cropStartY;clampCrop();drawCrop()});['pointerup','pointercancel'].forEach(ev=>cropStage?.addEventListener(ev,()=>cropDragging=false));cropZoom?.addEventListener('input',()=>{cropScale=Number(cropZoom.value)||1;clampCrop();drawCrop()});window.addEventListener('resize',()=>{clampCrop();drawCrop()});
  document.getElementById('cropClose')?.addEventListener('click',closeCrop);document.getElementById('cropCancel')?.addEventListener('click',closeCrop);cropModal?.addEventListener('click',e=>{if(e.target===cropModal)closeCrop()});
- document.getElementById('cropApply')?.addEventListener('click',()=>{const u=getSession();if(!u||!cropImage)return;const size=cropSize(),out=document.createElement('canvas');out.width=480;out.height=480;const ctx=out.getContext('2d');ctx.clearRect(0,0,480,480);const scale=Math.max(size/cropImage.width,size/cropImage.height)*cropScale;const w=cropImage.width*scale,h=cropImage.height*scale;const x=(size-w)/2+cropX,y=(size-h)/2+cropY;const factor=480/size;ctx.drawImage(cropImage,x*factor,y*factor,w*factor,h*factor);let photoData=out.toDataURL('image/jpeg',0.78);try{const photos=getPhotos();photos[u.key]=photoData;localStorage.setItem(photoKey,JSON.stringify(photos));closeCrop();renderAccount();renderStudents();document.getElementById('profilePhotoInput').value='';profileToast('Foto Profile berhasil disimpan.')}catch(err){try{const smaller=document.createElement('canvas');smaller.width=360;smaller.height=360;smaller.getContext('2d').drawImage(out,0,0,360,360);photoData=smaller.toDataURL('image/jpeg',0.68);const photos=getPhotos();photos[u.key]=photoData;localStorage.setItem(photoKey,JSON.stringify(photos));closeCrop();renderAccount();renderStudents();document.getElementById('profilePhotoInput').value='';profileToast('Foto Profile berhasil disimpan.')}catch(err2){toast('Penyimpanan browser penuh. Hapus data foto lama lalu coba lagi.')}}});
+ document.getElementById('cropApply')?.addEventListener('click',()=>{const u=getSession();if(!u||!cropImage)return;const size=cropSize(),out=document.createElement('canvas');out.width=720;out.height=720;const ctx=out.getContext('2d');ctx.clearRect(0,0,720,720);const scale=Math.max(size/cropImage.width,size/cropImage.height)*cropScale;const w=cropImage.width*scale,h=cropImage.height*scale;const x=(size-w)/2+cropX,y=(size-h)/2+cropY;const factor=720/size;ctx.drawImage(cropImage,x*factor,y*factor,w*factor,h*factor);try{const photos=getPhotos();photos[u.key]=out.toDataURL('image/jpeg',0.9);localStorage.setItem(photoKey,JSON.stringify(photos));closeCrop();renderAccount();renderStudents();document.getElementById('profilePhotoInput').value='';profileToast('Foto Profile berhasil disimpan.')}catch(err){toast('Penyimpanan foto penuh. Coba foto yang lebih kecil.')}});
  document.getElementById('changePhotoBtn')?.addEventListener('click',()=>document.getElementById('profilePhotoInput')?.click());document.getElementById('profilePhotoInput')?.addEventListener('change',e=>{const file=e.target.files?.[0];if(!file)return;if(!file.type.startsWith('image/')){toast('Pilih file gambar.');e.target.value='';return}if(file.size>8*1024*1024){toast('Foto maksimal 8 MB.');e.target.value='';return}openCrop(file)});
  document.getElementById('deletePhotoBtn')?.addEventListener('click',()=>{const u=getSession();if(!u)return;const photos=getPhotos();delete photos[u.key];localStorage.setItem(photoKey,JSON.stringify(photos));renderAccount();renderStudents();toast('Foto Profile dihapus')});
  try{if(getSession())renderAccount();else guestTop()}catch{guestTop()}
@@ -661,14 +625,7 @@ applySiteConfig();
  function updateRows(){list?.querySelectorAll('.music-row').forEach(row=>{const id=Number(row.dataset.song),icon=row.querySelector('.music-play');const active=id===currentId&&!audio.paused;row.classList.toggle('playing',id===currentId);if(icon)icon.textContent=active?'❚❚':'▶'})}
  function render(){
   if(!list)return;
-  list.innerHTML=songs.length?songs.map((s,i)=>{const initials=(s.name||'♫').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase();return `<div class="music-row" data-song="${i}"><button class="music-row-main" type="button" aria-label="Putar ${escapeHTML(s.name)}"><span class="music-cover-shell"><img class="music-cover" src="${escapeHTML(s.cover)}" alt="Cover ${escapeHTML(s.name)}" loading="eager"><span class="music-cover-fallback">${escapeHTML(initials)}</span></span><span class="music-row-info"><b>${escapeHTML(s.name)}</b><small>${escapeHTML(s.artist||'Musik lokal')}</small></span><span class="music-play">▶</span></button></div>`}).join(''):'<div class="music-empty">Belum ada lagu.</div>';
-  list.querySelectorAll('.music-cover').forEach(img=>img.addEventListener('error',()=>{
-   const tried=Number(img.dataset.try||0),src=img.dataset.src||img.src;
-   const base=src.replace(/\.(jpg|jpeg|png|webp)$/i,'');
-   const exts=['jpg','png','jpeg'];
-   if(tried<exts.length){img.dataset.try=String(tried+1);img.src=base+'.'+exts[tried];return;}
-   img.style.display='none';img.nextElementSibling?.classList.add('show');
- }));
+  list.innerHTML=songs.length?songs.map((s,i)=>`<div class="music-row" data-song="${i}"><button class="music-row-main" type="button" aria-label="Putar ${escapeHTML(s.name)}"><img class="music-cover" src="${escapeHTML(s.cover)}" alt="" onerror="this.style.visibility='hidden'"><span class="music-row-info"><b>${escapeHTML(s.name)}</b><small>${escapeHTML(s.artist||'Musik lokal')}</small></span><span class="music-play">▶</span></button></div>`).join(''):'<div class="music-empty">Belum ada lagu.</div>';
   list.querySelectorAll('.music-row-main').forEach(b=>b.addEventListener('click',()=>{
    const row=b.closest('.music-row'),s=songs[Number(row?.dataset.song)];if(!s||!s.src)return;
    const id=s.id;if(currentId===id&&audio.src){if(audio.paused)audio.play().catch(()=>{});else audio.pause();updateRows();return}
@@ -903,7 +860,7 @@ function openFaceAttendance(){
  modal.classList.add('show');modal.setAttribute('aria-hidden','false');resetFaceAttendanceUI();
  setTimeout(()=>startFaceCamera(),180);
  const local=getFaceAttendanceLocal(localDateKey());
- if(local[u.nisn]){setFaceStatus('Kamu sudah mengirim foto absensi hari ini pada '+(local[u.nisn].time||'hari ini')+'.','success');showFacePreview(local[u.nisn].image,(local[u.nisn].name||u.name)+' • '+(local[u.nisn].time||'Tersimpan lokal'));return}
+ if(local[u.nisn]){setFaceStatus('Kamu sudah mengirim foto absensi hari ini pada '+(local[u.nisn].time||'hari ini')+'.','success');showFacePreview(local[u.nisn].image,local[u.nisn].time||'Tersimpan lokal');return}
  if(DRIVE_UPLOAD_URL) loadDriveFaceAttendance(localDateKey(),false,u.nisn);
 }
 function closeFaceAttendance(){
@@ -968,10 +925,27 @@ function submitFaceAttendance(){
 function uploadFaceToDrive(record){
  try{
   const iframe=document.createElement('iframe');iframe.name='faceDriveFrame_'+Date.now();iframe.style.display='none';document.body.appendChild(iframe);
-  const form=document.createElement('form');form.method='POST';form.action=DRIVE_UPLOAD_URL;form.target=iframe.name;form.style.display='none';
+  const form=document.createElement('form');
+  form.method='POST';
+  form.action=DRIVE_UPLOAD_URL;
+  form.target=iframe.name;
+  form.enctype='application/x-www-form-urlencoded';
+  form.acceptCharset='UTF-8';
+  form.style.display='none';
   const fields={action:'uploadFaceAttendance',date:record.date,time:record.time,nisn:record.nisn,name:record.name,mimeType:'image/jpeg',imageData:record.image.split(',')[1]};
-  Object.entries(fields).forEach(([k,v])=>{const input=document.createElement('input');input.name=k;input.value=v;form.appendChild(input)});
-  document.body.appendChild(form);form.submit();setTimeout(()=>{form.remove();iframe.remove()},15000);
+  Object.entries(fields).forEach(([k,v])=>{
+    const input=document.createElement('textarea');
+    input.name=k;
+    input.value=String(v??'');
+    input.style.display='none';
+    form.appendChild(input);
+  });
+  document.body.appendChild(form);
+  iframe.addEventListener('load',()=>{
+    setFaceStatus('Foto sudah dikirim ke Google Drive. Cek folder Drive untuk memastikan file masuk.','success');
+  },{once:true});
+  form.submit();
+  setTimeout(()=>{form.remove();iframe.remove()},20000);
  }catch(e){toast('Foto tersimpan lokal, tetapi pengiriman Drive gagal.')}
 }
 function driveJsonp(dateKey){
@@ -992,21 +966,19 @@ async function loadDriveFaceAttendance(dateKey,force=false,checkNisn=''){
   const local=getFaceAttendanceLocal(dateKey),accounts=window.__CLASS_ACCOUNTS||[];
   res.records.forEach(r=>{if(!r.nisn)return;local[r.nisn]=Object.assign({},local[r.nisn]||{},r,{source:'drive',image:r.thumbnail||r.url||local[r.nisn]?.image})});
   saveFaceAttendanceLocal(dateKey,local);
-  if(checkNisn&&local[checkNisn]){setFaceStatus('Kamu sudah tercatat absen foto hari ini di Google Drive.','success');showFacePreview(local[checkNisn].image,(local[checkNisn].name||'Siswa')+' • '+(local[checkNisn].time||'Google Drive'));document.getElementById('faceSubmitActions').hidden=true}
+  if(checkNisn&&local[checkNisn]){setFaceStatus('Kamu sudah tercatat absen foto hari ini di Google Drive.','success');showFacePreview(local[checkNisn].image,local[checkNisn].time||'Google Drive');document.getElementById('faceSubmitActions').hidden=true}
   if(document.getElementById('adminContent')&&document.querySelector('.admin-tab.active')?.dataset.admin==='face-attendance'){window.__faceDriveSkipNextLoad=true;adminRender('face-attendance')}
  }catch(e){/* Drive optional: local mode continues */ }
 }
 function renderFaceAdminPhotos(data){
- const entries=Object.values(data||{});
- if(!entries.length)return '<div class="face-empty"><strong>Belum ada foto</strong><span>Foto siswa yang berhasil dikirim akan muncul di sini.</span></div>';
+ const entries=Object.values(data||{});if(!entries.length)return '<div class="face-empty">Belum ada foto absensi yang masuk hari ini.</div>';
  const accounts=window.__CLASS_ACCOUNTS||[];
+ const nick=r=>{const a=accounts.find(x=>x.nisn===r.nisn);return a?.first||r.name||'Siswa'};
  return entries.sort((a,b)=>(a.time||'').localeCompare(b.time||'')).map(r=>{
+   const full=r.name||accounts.find(x=>x.nisn===r.nisn)?.name||'Siswa';
    const src=r.image||r.thumbnail||r.url||'';
-   const acc=accounts.find(a=>String(a.nisn)===String(r.nisn));
-   const nick=acc?.first||r.first||String(r.name||'Siswa').split(/\s+/)[0]||'Siswa';
-   const full=acc?.name||r.name||nick;
-   const meta=nick+' • '+(r.time||'Waktu tidak tersedia');
-   return `<button type="button" class="face-admin-photo" data-src="${escapeHTML(src)}" data-meta="${escapeHTML(meta)}"><span class="face-admin-photo-image"><img src="${escapeHTML(src)}" alt="Foto ${escapeHTML(full)}" loading="lazy"></span><span class="face-admin-photo-info"><span class="face-photo-status">ABSEN FOTO</span><b>${escapeHTML(nick)}</b><small>${escapeHTML(full)}</small><strong class="face-photo-time">${escapeHTML(r.time||'Waktu tidak tersedia')}</strong><em>Ketuk untuk buka foto</em></span><span class="face-photo-arrow">↗</span></button>`;
+   const meta=`${r.time||'Waktu tidak tersedia'} • ${r.source==='drive'?'Google Drive':'Perangkat'}`;
+   return `<button type="button" class="face-admin-photo" data-src="${escapeHTML(src)}" data-meta="${escapeHTML(full+' • '+meta)}"><span class="face-admin-photo-image"><img src="${escapeHTML(src)}" alt="Foto absensi ${escapeHTML(full)}" loading="lazy"></span><span class="face-admin-photo-info"><span class="face-photo-status">ABSEN FOTO</span><b>${escapeHTML(nick(r))}</b><small>${escapeHTML(full)}</small><strong class="face-photo-time">${escapeHTML(r.time||'Waktu tidak tersedia')}</strong><em>Ketuk untuk buka foto</em></span><span class="face-photo-arrow">↗</span></button>`;
  }).join('');
 }
 

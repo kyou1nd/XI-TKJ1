@@ -417,6 +417,19 @@
   </div>
 </div>
 
+<div class="modal file-center-modal" id="fileCenterModal" aria-hidden="true">
+  <div class="file-center-box">
+    <button class="modal-close" id="fileCenterClose" type="button">×</button>
+    <div class="file-center-head"><span class="eyebrow">CONTROL PANEL • FILE CENTER</span><h2>Tambah File / Link</h2><p>Tambahkan materi atau tautan kelas dengan tampilan yang sama rapi seperti form tugas.</p></div>
+    <div class="file-center-form">
+      <label>Nama file / materi<input id="fileCenterTitle" type="text" placeholder="Contoh: Modul Jaringan Dasar"></label>
+      <label>Jenis<select id="fileCenterType"><option>PDF</option><option>Modul</option><option>Dokumen</option><option>Link</option></select></label>
+      <label>URL Google Drive / File <input id="fileCenterUrl" type="url" placeholder="https://drive.google.com/..."></label>
+    </div>
+    <div class="file-center-actions"><button class="mini-btn" id="fileCenterCancel" type="button">Batal</button><button class="btn btn-primary" id="fileCenterSave" type="button">Simpan File</button></div>
+  </div>
+</div>
+
 <div class="music-panel" id="musicPanel" aria-hidden="true">
   <div class="music-panel-head"><div><span class="eyebrow">XI TKJ 1 MUSIC</span><h3>Music Player</h3><p>Semua pengunjung bisa mendengarkan lagu. Login hanya diperlukan untuk menambah atau menghapus lagu.</p></div><button class="music-close" id="musicClose" aria-label="Tutup">×</button></div>
   <div class="music-drop"><div class="music-drop-icon">♫</div><div><b>Music lokal</b><small>Lagu ditambahkan manual ke folder <code>assets/music/</code>. Semua pengunjung bisa langsung memutarnya.</small></div></div>
@@ -426,26 +439,6 @@
 
 <div class="tool-modal" id="toolModal"><div class="tool-modal-box"><button class="modal-close" id="toolClose">×</button><div id="toolModalContent"></div></div></div>
 
-<div class="modal file-center-modal" id="fileCenterModal" aria-hidden="true">
-  <div class="file-center-box">
-    <button class="modal-close" id="fileCenterClose" type="button" aria-label="Tutup">×</button>
-    <span class="eyebrow">FILE CENTER • ADMIN</span>
-    <h2>Tambah File / Link</h2>
-    <p class="file-center-subtitle">Tambahkan file seperti saat mengunggah tugas, tanpa popup “website menyatakan”.</p>
-    <label class="file-center-upload">
-      <span class="file-center-upload-icon">＋</span>
-      <span><b>Pilih file dari perangkat</b><small>PDF, DOC, PPT, gambar, ZIP • maksimal 2,5 MB</small></span>
-      <input id="fileCenterUpload" type="file">
-    </label>
-    <div class="file-center-or"><span>atau</span></div>
-    <div class="file-center-fields">
-      <label>Nama file / materi<input id="fileCenterTitle" type="text" placeholder="Contoh: Modul Jaringan Dasar"></label>
-      <label>Jenis<select id="fileCenterType"><option>Dokumen</option><option>PDF</option><option>Modul</option><option>Link</option><option>Materi</option></select></label>
-      <label>URL / Google Drive <span>(opsional)</span><input id="fileCenterUrl" type="url" placeholder="https://..."></label>
-    </div>
-    <div class="file-center-actions"><button class="mini-btn" id="fileCenterCancel" type="button">Batal</button><button class="btn btn-primary" id="fileCenterSave" type="button">＋ Tambahkan</button></div>
-  </div>
-</div>
 <div class="toast" id="toast"></div>
 
 <div class="modal task-input-modal" id="taskInputModal" aria-hidden="true">
