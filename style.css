@@ -32,6 +32,14 @@ footer{width:min(1100px,calc(100% - 30px));margin:auto;padding:30px 0;display:fl
 @media(max-width:650px){.navbar{height:65px}.brand-text small{display:none}.section{padding:70px 0}.hero{padding-top:25px}.hero-card{min-height:600px}.hero-content{width:100%;padding:35px 25px}.hero h1{font-size:58px}.hero-description{max-width:100%}.hero-visual{width:300px;height:300px;right:50%;transform:translateX(50%);bottom:-30px;opacity:.45}.stats-grid{grid-template-columns:1fr 1fr}.about-grid,.announcement-grid{grid-template-columns:1fr}.students-grid{grid-template-columns:repeat(2,1fr)}.student-toolbar{flex-direction:column}#studentFilter{height:45px}.schedule-item{grid-template-columns:70px 1fr}.schedule-room{grid-column:2;width:max-content}.gallery-grid{grid-template-columns:1fr 1fr;grid-template-rows:160px 160px}.gallery-item.large{grid-column:span 2;grid-row:auto}.cta-card{padding:35px 25px}.cta-decoration{position:absolute;right:-20px;font-size:130px}footer{flex-direction:column;gap:20px;text-align:center}}
 @media(max-width:400px){.stats-grid{grid-template-columns:1fr}.students-grid{grid-template-columns:1fr 1fr}}
 
+
+/* Music artwork: always reserves a real album-art tile, even if a cover file is missing. */
+.music-cover-shell{position:relative;width:44px;height:44px;display:block;flex:0 0 44px;border-radius:11px;overflow:hidden;background:linear-gradient(135deg,#2d356f,#151a34);border:1px solid rgba(255,255,255,.10);box-shadow:0 8px 18px rgba(0,0,0,.20)}
+.music-cover-shell .music-cover{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;background:#11152a}
+.music-cover-fallback{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:900;letter-spacing:.5px;background:linear-gradient(135deg,rgba(90,104,255,.95),rgba(185,68,255,.82));opacity:1}
+.music-cover-fallback:not(.show){display:none}
+.music-row.playing .music-cover-shell{box-shadow:0 0 0 2px rgba(120,135,255,.25),0 10px 24px rgba(0,0,0,.25)}
+
 /* ===== MODERN CLASS PORTAL ADDITIONS ===== */
 .piket-toolbar{display:flex;gap:10px;margin-bottom:16px}
 .piket-toolbar .search-box{max-width:none}
