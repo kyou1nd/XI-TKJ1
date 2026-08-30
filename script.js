@@ -856,37 +856,92 @@ function compressFaceImage(dataUrl,maxSide=720,quality=.78){
  });
 }
 
+function formatAttendanceWatermarkDate(date,time){
+ const d=new Date(String(date||'').replace(/-/g,'/')+' 12:00:00');
+ const days=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+ const weekday=Number.isNaN(d.getTime())?'':days[d.getDay()];
+ const dateText=String(date||'').replace(/-/g,'.');
+ return (weekday?weekday+' ':'')+dateText+(time?' '+time:'');
+}
+
+function wrapWatermarkLine(ctx,text,maxWidth){
+ const words=String(text||'').trim().split(/\s+/).filter(Boolean),lines=[];
+ let line='';
+ for(const word of words){
+  const test=line?line+' '+word:word;
+  if(ctx.measureText(test).width<=maxWidth||!line)line=test;
+  else{lines.push(line);line=word}
+ }
+ if(line)lines.push(line);
+ return lines.slice(0,2);
+}
+
 function addAttendanceWatermark(dataUrl,record){
  return new Promise((resolve,reject)=>{
   const img=new Image();
   img.onload=()=>{
    try{
-    const c=document.createElement('canvas');c.width=img.naturalWidth||img.width;c.height=img.naturalHeight||img.height;
-    const ctx=c.getContext('2d');ctx.drawImage(img,0,0,c.width,c.height);
-    const pad=Math.max(18,Math.round(c.width*.028)),fs=Math.max(15,Math.round(c.width*.028));
-    const lines=[
-      'XI TKJ 1 • ABSENSI FOTO',
-      '📅 '+record.date+'   ⏰ '+record.time,
-      '📍 '+(record.locationText||record.address||'Lokasi tidak tersedia'),
-      'Akurasi ±'+Math.round(record.accuracy||0)+' m'
-    ];
-    ctx.font='700 '+fs+'px Arial, sans-serif';
+    const c=document.createElement('canvas');
+    c.width=img.naturalWidth||img.width;
+    c.height=img.naturalHeight||img.height;
+    const ctx=c.getContext('2d');
+    ctx.drawImage(img,0,0,c.width,c.height);
+
+    // Watermark kecil dan clean di kanan bawah seperti contoh.
+    const pad=Math.max(14,Math.round(c.width*.018));
+    const fs=Math.max(13,Math.round(c.width*.020));
+    const smallFs=Math.max(12,Math.round(c.width*.017));
+    const maxTextWidth=Math.min(c.width*.78,Math.max(220,c.width-pad*2));
+    const location=String(record.locationText||record.address||'Lokasi tidak tersedia')
+      .replace(/\s*,\s*/g,', ');
+
     ctx.textBaseline='top';
-    const lineH=Math.round(fs*1.35);
-    const maxW=Math.max(...lines.map(x=>ctx.measureText(x).width));
-    const boxW=maxW+pad*2,boxH=lineH*lines.length+pad*2;
-    const x=pad,y=c.height-boxH-pad;
-    ctx.fillStyle='rgba(3,7,18,.72)';ctx.fillRect(x,y,boxW,boxH);
-    ctx.strokeStyle='rgba(255,255,255,.28)';ctx.lineWidth=Math.max(1,Math.round(c.width*.002));ctx.strokeRect(x,y,boxW,boxH);
+    ctx.font='600 '+fs+'px "Trebuchet MS", "Segoe UI", Arial, sans-serif';
+    const locationLines=wrapWatermarkLine(ctx,location,maxTextWidth);
+    ctx.font='600 '+smallFs+'px "Trebuchet MS", "Segoe UI", Arial, sans-serif';
+    const dateLine=formatAttendanceWatermarkDate(record.date,record.time);
+
+    const lineH=Math.round(fs*1.18);
+    const dateH=Math.round(smallFs*1.25);
+    const boxH=pad+locationLines.length*lineH+dateH+pad;
+    const y=c.height-boxH-pad;
+
+    // Panel gelap tipis + shadow agar premium dan tetap terbaca.
+    ctx.fillStyle='rgba(0,0,0,.20)';
+    const widths=[];
+    ctx.font='600 '+fs+'px "Trebuchet MS", "Segoe UI", Arial, sans-serif';
+    locationLines.forEach(x=>widths.push(ctx.measureText(x).width));
+    ctx.font='600 '+smallFs+'px "Trebuchet MS", "Segoe UI", Arial, sans-serif';
+    widths.push(ctx.measureText(dateLine).width);
+    const boxW=Math.min(c.width-pad*2,Math.max(...widths)+pad*2);
+    const x=c.width-boxW-pad;
+    ctx.beginPath();
+    const r=Math.max(8,Math.round(fs*.45));
+    ctx.roundRect(x,y,boxW,boxH,r);
+    ctx.fill();
+
+    ctx.shadowColor='rgba(0,0,0,.72)';
+    ctx.shadowBlur=Math.max(3,Math.round(fs*.45));
+    ctx.shadowOffsetY=1;
     ctx.fillStyle='#fff';
-    lines.forEach((line,i)=>ctx.fillText(line,x+pad,y+pad+i*lineH));
-    resolve(c.toDataURL('image/jpeg',.9));
+    ctx.font='600 '+fs+'px "Trebuchet MS", "Segoe UI", Arial, sans-serif';
+    let ty=y+pad;
+    locationLines.forEach(line=>{
+      ctx.fillText(line,x+pad,ty);
+      ty+=lineH;
+    });
+    ctx.font='600 '+smallFs+'px "Trebuchet MS", "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle='rgba(255,255,255,.92)';
+    ctx.fillText(dateLine,x+pad,ty+1);
+    ctx.shadowColor='transparent';
+
+    resolve(c.toDataURL('image/jpeg',.92));
    }catch(e){reject(e)}
   };
-  img.onerror=()=>reject(new Error('Foto gagal diproses'));img.src=dataUrl;
+  img.onerror=()=>reject(new Error('Foto gagal diproses'));
+  img.src=dataUrl;
  });
 }
-
 function openFaceAttendance(){
  const u=faceSession();
  if(!u||u.role!=='student'){toast('Login sebagai siswa untuk menggunakan Absen Foto Muka.');return}
@@ -976,13 +1031,22 @@ async function getReadableLocation(lat,lon){
   const res=await fetch(url,{headers:{Accept:'application/json'}});
   if(!res.ok)throw new Error('reverse geocode gagal');
   const d=await res.json(),a=d.address||{};
-  const road=a.road||a.pedestrian||a.residential||a.neighbourhood||a.suburb||'';
-  const village=a.village||a.town||a.city_district||a.city||'';
-  const district=a.county||a.city_district||a.district||a.suburb||'';
-  const city=a.city||a.regency||a.county||a.town||'';
+  const road=a.road||a.pedestrian||a.residential||a.neighbourhood||'';
+  const village=a.village||a.hamlet||a.suburb||a.neighbourhood||'';
+  const district=a.city_district||a.district||a.municipality||'';
+  const regency=a.regency||a.county||a.city||a.town||'';
   const state=a.state||a.province||'';
-  const parts=[road,village,district,city,state].filter((v,i,arr)=>v&&arr.indexOf(v)===i);
-  return parts.join(', ')||d.display_name||fallback;
+  const place=[];
+  if(road)place.push(road);
+  if(village)place.push(village);
+  if(district)place.push('Kec. '+district.replace(/^Kecamatan\s+/i,''));
+  if(regency){
+   const prefix=/^(Kota|Kabupaten|Kab\.|Kab\s)/i.test(regency)?'':'Kab. ';
+   place.push(prefix+regency.replace(/^Kabupaten\s+/i,'').replace(/^Kab\.\s*/i,''));
+  }
+  if(state)place.push(state);
+  const unique=place.filter((v,i,arr)=>v&&arr.indexOf(v)===i);
+  return unique.join(', ')||d.display_name||fallback;
  }catch(e){return fallback}
 }
 async function submitFaceAttendance(){
