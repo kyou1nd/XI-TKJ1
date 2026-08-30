@@ -1216,14 +1216,3 @@ syncFaceAttendanceMenu();
 document.getElementById('facePhotoViewerImage')?.addEventListener('click',e=>{
  e.currentTarget.classList.toggle('zoomed');
 });
-
-
-/* FINAL HERO CLASS PHOTO FIX: keep the real 16:9 class photo and the typing title visible */
-.hero.section{padding-top:22px!important}
-.hero-card.hero-class-photo{position:relative!important;width:100%!important;aspect-ratio:16/9!important;min-height:0!important;height:auto!important;overflow:hidden!important;border-radius:28px!important;background:#0c1224!important;display:block!important}
-.hero-class-photo-bg{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;display:block!important;object-fit:cover!important;object-position:center center!important;z-index:0!important}
-.hero-photo-overlay{position:absolute!important;inset:0!important;display:block!important;z-index:1!important;background:linear-gradient(90deg,rgba(4,8,18,.48),rgba(4,8,18,.12) 55%,rgba(4,8,18,.30))!important}
-.hero-class-photo .hero-content{position:absolute!important;inset:0!important;z-index:2!important;width:100%!important;height:100%!important;padding:20px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;text-align:center!important}
-.hero-class-photo .typewriter-title{position:relative!important;display:inline-block!important;visibility:visible!important;opacity:1!important;margin:0!important;color:#fff!important;font-size:clamp(46px,8vw,108px)!important;line-height:1!important;letter-spacing:-.04em!important;text-shadow:0 4px 22px rgba(0,0,0,.9)!important;z-index:3!important}
-.hero-class-photo .welcome{display:block!important;margin:0 0 14px!important;color:#fff!important;opacity:.95!important;text-shadow:0 2px 12px rgba(0,0,0,.85)!important}
-@media(max-width:650px){.hero-card.hero-class-photo{aspect-ratio:16/9!important;min-height:0!important;border-radius:22px!important}.hero-class-photo .hero-content{padding:14px!important}.hero-class-photo .typewriter-title{font-size:clamp(40px,13vw,66px)!important}.hero-class-photo .welcome{font-size:8px!important;letter-spacing:2px!important;margin-bottom:8px!important}.hero-class-photo .hero-description,.hero-class-photo .hero-buttons,.hero-class-photo .hero-live-strip,.hero-class-photo .badge{display:none!important}}
