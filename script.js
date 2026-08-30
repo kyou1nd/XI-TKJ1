@@ -53,10 +53,19 @@ if(themeButton){
  });
 }
 
-const menuButton=document.getElementById("menuButton"),mobileMenu=document.getElementById("mobileMenu");
-menuButton?.addEventListener("click",e=>{e.stopPropagation();mobileMenu?.classList.toggle("show")});
-document.addEventListener("click",e=>{if(mobileMenu?.classList.contains("show")&&!mobileMenu.contains(e.target)&&e.target!==menuButton)mobileMenu.classList.remove("show")});
-document.querySelectorAll(".mobile-menu a:not([data-open-account])").forEach(a=>a.addEventListener("click",()=>mobileMenu.classList.remove("show")));
+const menuButton=document.getElementById("menuButton"),mobileMenu=document.getElementById("mobileMenu"),mobileMenuClose=document.getElementById("mobileMenuClose");
+function setClassMenu(open){
+ if(!mobileMenu)return;
+ mobileMenu.classList.toggle("show",open);
+ menuButton?.setAttribute("aria-expanded",String(open));
+ document.body.classList.toggle("class-menu-open",open);
+}
+menuButton?.setAttribute("aria-expanded","false");
+menuButton?.addEventListener("click",e=>{e.stopPropagation();setClassMenu(!mobileMenu?.classList.contains("show"))});
+mobileMenuClose?.addEventListener("click",()=>setClassMenu(false));
+document.addEventListener("click",e=>{if(mobileMenu?.classList.contains("show")&&!mobileMenu.contains(e.target)&&!menuButton?.contains(e.target))setClassMenu(false)});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")setClassMenu(false)});
+document.querySelectorAll(".mobile-menu a").forEach(a=>a.addEventListener("click",()=>setClassMenu(false)));
 
 const navLinks=document.querySelectorAll(".nav-links a"),sections=document.querySelectorAll("section[id]");
 window.addEventListener("scroll",()=>{
@@ -564,11 +573,11 @@ window.exportClassBackup=exportClassBackup;
  const topPill=document.getElementById('accountShortcut');
  const sessionKey='xi-account-session', passKey='xi-account-passwords', photoKey='xi-account-photos', profileKey='xi-account-profiles';
  const getSession=()=>{try{return JSON.parse(sessionStorage.getItem(sessionKey)||'null')}catch{return null}};
- const setSession=u=>{sessionStorage.setItem(sessionKey,JSON.stringify(u));syncAdminMenu();window.dispatchEvent(new CustomEvent('xi-session-changed'))};
+ const setSession=u=>{sessionStorage.setItem(sessionKey,JSON.stringify(u));syncAdminMenu();if(typeof syncFaceAttendanceMenu==='function')syncFaceAttendanceMenu();window.dispatchEvent(new CustomEvent('xi-session-changed'))};
  const getPasswords=()=>JSON.parse(localStorage.getItem(passKey)||'{}');
  const getPhotos=()=>JSON.parse(localStorage.getItem(photoKey)||'{}');
  const adminMenu=document.getElementById('adminControlLink');
- function syncAdminMenu(){const u=getSession();if(adminMenu)adminMenu.hidden=!(u&&u.role==='admin');}
+ function syncAdminMenu(){const u=getSession();if(adminMenu)adminMenu.hidden=!(u&&u.role==='admin');if(typeof syncFaceAttendanceMenu==='function')syncFaceAttendanceMenu();}
  function initials(n){return n.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'XI'}
  function openAccount(){modal?.classList.add('show');modal?.setAttribute('aria-hidden','false');renderAccount()}
  function closeAccount(){modal?.classList.remove('show');modal?.setAttribute('aria-hidden','true')}
@@ -588,7 +597,7 @@ function renderAccount(){const u=getSession();syncStudentOnlySections();syncAdmi
  document.querySelectorAll('[data-auth-modal-view]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-auth-modal-view]').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.modal-login-view').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(b.dataset.authModalView==='student'?'studentModalAuth':'adminModalAuth')?.classList.add('active')}));
  document.getElementById('studentLoginForm')?.addEventListener('submit',e=>{e.preventDefault();const nisn=document.getElementById('studentUsername').value.trim();const pw=document.getElementById('studentPassword').value;const err=document.getElementById('studentLoginError');const u=ACCOUNTS.find(x=>x.nisn===nisn);const stored=getPasswords();if(!u){err.textContent='NISN tidak ditemukan di data XI TKJ 1.';return}if((stored[u.nisn]||u.defaultPassword)!==pw){err.textContent='Password salah.';return}err.textContent='';setSession({role:'student',key:u.nisn,name:u.name,nisn:u.nisn,first:u.first});document.getElementById('studentLoginForm').reset();renderAccount();closeAccount();welcomeToast('Welcome Di Website XI TKJ 1 '+u.name)});
  document.getElementById('adminLoginForm')?.addEventListener('submit',e=>{e.preventDefault();const un=document.getElementById('adminUsername').value.trim(),pw=document.getElementById('adminPassword').value,err=document.getElementById('adminLoginError');if(un!==ADMIN.username||pw!==ADMIN.password){err.textContent='Username atau password admin salah.';return}err.textContent='';setSession({role:'admin',key:'admin',name:ADMIN.name});document.getElementById('adminLoginForm').reset();renderAccount();closeAccount();welcomeToast('Welcome Di Website XI TKJ 1 '+ADMIN.name)});
- document.getElementById('accountLogout')?.addEventListener('click',()=>{sessionStorage.removeItem(sessionKey);syncAdminMenu();window.dispatchEvent(new CustomEvent('xi-session-changed'));renderAccount();guestTop();closeAccount();closeAdminPortal();toast('Sesi ditutup.')});document.getElementById('adminLogout')?.addEventListener('click',()=>{sessionStorage.removeItem(sessionKey);syncAdminMenu();window.dispatchEvent(new CustomEvent('xi-session-changed'));closeAdminPortal();renderAccount();guestTop();toast('Sesi admin ditutup.')});
+ document.getElementById('accountLogout')?.addEventListener('click',()=>{sessionStorage.removeItem(sessionKey);syncAdminMenu();if(typeof syncFaceAttendanceMenu==='function')syncFaceAttendanceMenu();window.dispatchEvent(new CustomEvent('xi-session-changed'));renderAccount();guestTop();closeAccount();closeAdminPortal();toast('Sesi ditutup.')});document.getElementById('adminLogout')?.addEventListener('click',()=>{sessionStorage.removeItem(sessionKey);syncAdminMenu();if(typeof syncFaceAttendanceMenu==='function')syncFaceAttendanceMenu();window.dispatchEvent(new CustomEvent('xi-session-changed'));closeAdminPortal();renderAccount();guestTop();toast('Sesi admin ditutup.')});
  document.getElementById('saveAccountProfile')?.addEventListener('click',()=>{const u=getSession();if(!u||u.role!=='student')return toast('Login sebagai siswa untuk mengubah profil.');openProfileConfirm()});
  function openProfileConfirm(){const m=document.getElementById('profileConfirmModal');if(m){m.classList.add('show');m.setAttribute('aria-hidden','false')}}
  function closeProfileConfirm(){const m=document.getElementById('profileConfirmModal');if(m){m.classList.remove('show');m.setAttribute('aria-hidden','true')}}

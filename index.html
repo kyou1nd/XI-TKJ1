@@ -49,23 +49,53 @@
 </div>
 </header>
 
-<div class="mobile-menu" id="mobileMenu"><div class="mobile-menu-title">NAVIGASI KELAS</div>
-<a href="#faceAttendance" id="faceAttendanceLink" hidden><span class="menu-icon">📷</span><span>Absen Foto Muka</span><span class="menu-new-badge">ABSEN</span></a>
-<a href="#home"><span class="menu-icon">⌂</span><span>Home</span></a>
-<a href="#about"><span class="menu-icon">◈</span><span>Tentang</span></a>
-<a href="#schedule"><span class="menu-icon">◷</span><span>Jadwal</span></a>
-<a href="#piket"><span class="menu-icon">✓</span><span>Piket</span></a>
-<a href="#students"><span class="menu-icon">♙</span><span>Siswa</span></a>
-<a href="#announcements"><span class="menu-icon">i</span><span>Info</span></a>
-<a href="#dashboard-pro"><span class="menu-icon">▦</span><span>Dashboard</span></a>
-<a href="#tasks"><span class="menu-icon">T</span><span>Tugas</span></a>
-<a href="#knowledge"><span class="menu-icon">M</span><span>Materi</span></a>
-<a href="#tools"><span class="menu-icon">⚙</span><span>TKJ Tools</span></a>
-<a href="#notifications"><span class="menu-icon">!</span><span>Notifikasi</span></a>
-<a href="#finance"><span class="menu-icon">K</span><span>Kas Kelas</span></a>
-<a href="#events"><span class="menu-icon">E</span><span>Event</span></a>
-<a href="#links"><span class="menu-icon">↗</span><span>Link Hub</span></a>
-<a href="#dashboard-pro" data-open-account="1" id="mobileAccountLink"><span class="menu-account-avatar"><img id="mobileAccountAvatar" alt="" hidden><span id="mobileAccountAvatarFallback">A</span></span><span id="mobileAccountLabel">Account / Login</span></a><a href="#adminPortal" id="adminControlLink" hidden><span class="menu-icon">CP</span><span>Admin Control Panel</span></a></div>
+<div class="mobile-menu" id="mobileMenu" role="dialog" aria-label="Navigasi kelas">
+  <div class="mobile-menu-head">
+    <div class="mobile-menu-title"><span class="menu-title-icon">XI</span><div><b>NAVIGASI KELAS</b><small>Semua menu XI TKJ 1 dalam satu tempat</small></div></div>
+    <button class="mobile-menu-close" id="mobileMenuClose" type="button" aria-label="Tutup menu">×</button>
+  </div>
+  <div class="mobile-menu-scroll">
+    <div class="menu-section">
+      <div class="menu-section-label">UTAMA</div>
+      <div class="menu-grid">
+        <a href="#home" class="menu-feature"><span class="menu-icon">⌂</span><span><b>Beranda</b><small>Kembali ke halaman utama</small></span></a>
+        <a href="#dashboard-pro" class="menu-feature"><span class="menu-icon">▦</span><span><b>Dashboard</b><small>Aktivitas dan akses akun</small></span></a>
+      </div>
+    </div>
+    <div class="menu-section">
+      <div class="menu-section-label">NAVIGASI KELAS</div>
+      <div class="menu-list">
+        <a href="#students"><span class="menu-icon">♙</span><span><b>Siswa</b><small>Daftar anggota kelas</small></span><em>›</em></a>
+        <a href="#about"><span class="menu-icon">◈</span><span><b>Tentang Kelas</b><small>Cerita, visi dan informasi XI TKJ 1</small></span><em>›</em></a>
+        <a href="#schedule"><span class="menu-icon">◷</span><span><b>Jadwal</b><small>Pelajaran dan agenda hari ini</small></span><em>›</em></a>
+        <a href="#piket"><span class="menu-icon">✓</span><span><b>Piket</b><small>Jadwal tugas kebersihan</small></span><em>›</em></a>
+      </div>
+    </div>
+    <div class="menu-section">
+      <div class="menu-section-label">AKADEMIK & INFORMASI</div>
+      <div class="menu-list">
+        <a href="#tasks"><span class="menu-icon">T</span><span><b>Tugas</b><small>Daftar tugas aktif</small></span><em>›</em></a>
+        <a href="#knowledge"><span class="menu-icon">M</span><span><b>Materi</b><small>Knowledge base pembelajaran</small></span><em>›</em></a>
+        <a href="#tools"><span class="menu-icon">⚙</span><span><b>TKJ Tools</b><small>Tools dan utilitas teknik</small></span><em>›</em></a>
+        <a href="#announcements"><span class="menu-icon">i</span><span><b>Pengumuman</b><small>Info penting kelas</small></span><em>›</em></a>
+        <a href="#notifications"><span class="menu-icon">!</span><span><b>Notifikasi</b><small>Pembaruan terbaru</small></span><em>›</em></a>
+      </div>
+    </div>
+    <div class="menu-section">
+      <div class="menu-section-label">KELAS & AKTIVITAS</div>
+      <div class="menu-list">
+        <a href="#finance"><span class="menu-icon">K</span><span><b>Kas Kelas</b><small>Ringkasan keuangan kelas</small></span><em>›</em></a>
+        <a href="#events"><span class="menu-icon">E</span><span><b>Event</b><small>Kegiatan dan agenda kelas</small></span><em>›</em></a>
+        <a href="#links"><span class="menu-icon">↗</span><span><b>Link Hub</b><small>Tautan penting kelas</small></span><em>›</em></a>
+        <a href="#faceAttendance" id="faceAttendanceLink" hidden><span class="menu-icon">A</span><span><b>Absen Foto Muka</b><small>Absensi khusus siswa</small></span><strong class="menu-new-badge">ABSEN</strong></a>
+      </div>
+    </div>
+  </div>
+  <div class="mobile-menu-footer">
+    <a href="#dashboard-pro" data-open-account="1" id="mobileAccountLink" class="mobile-account-card"><span class="menu-account-avatar"><img id="mobileAccountAvatar" alt="" hidden><span id="mobileAccountAvatarFallback">A</span></span><span><b id="mobileAccountLabel">Account / Login</b><small>Kelola akun dan profil</small></span><em>›</em></a>
+    <a href="#adminPortal" id="adminControlLink" class="admin-menu-card" hidden><span class="menu-icon">CP</span><span><b>Admin Control Panel</b><small>Pengaturan khusus administrator</small></span><em>›</em></a>
+  </div>
+</div>
 
 <main>
 
