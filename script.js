@@ -394,19 +394,26 @@ function adminRender(tab='overview'){
     const nisn=btn.dataset.attendance, value=btn.dataset.value, account=accounts.find(a=>a.nisn===nisn);
     data[nisn]=data[nisn]===value?'':value;
     localStorage.setItem('xi-attendance-'+dateKey,JSON.stringify(data));
-    if(data[nisn]&&account) syncManualAttendanceToSheets({date:dateKey,nisn:account.nisn,name:account.name,status:data[nisn]});
+    if(account){
+      const syncPromise=data[nisn]
+        ? syncManualAttendanceToSheets({date:dateKey,nisn:account.nisn,name:account.name,status:data[nisn]})
+        : attendanceJsonp('deleteManualAttendance',{date:dateKey,nisn:account.nisn});
+      syncPromise
+        .then(()=>toast(data[nisn]?`Absensi ${data[nisn]==='H'?'Hadir':data[nisn]==='I'?'Izin':'Alfa'} tersimpan di Google Sheets`:'Absensi dibatalkan dan sinkron ke Google Sheets'))
+        .catch(err=>toast('Gagal sinkron ke Google Sheets: '+err.message));
+    }
     adminRender('attendance');
     renderStudents();
-    toast(data[nisn]?`Absensi ${data[nisn]==='H'?'Hadir':data[nisn]==='I'?'Izin':'Alfa'} disimpan dan dikirim ke Google Sheets`:'Absensi dibatalkan di perangkat');
   }));
   c.querySelector('#attendanceAllPresent')?.addEventListener('click',()=>{
     const records=accounts.map(a=>({date:dateKey,nisn:a.nisn,name:a.name,status:'H'}));
     accounts.forEach(a=>{data[a.nisn]='H'});
     localStorage.setItem('xi-attendance-'+dateKey,JSON.stringify(data));
-    syncManualAttendanceBatchToSheets(records);
+    syncManualAttendanceBatchToSheets(records)
+      .then(()=>toast('Semua siswa ditandai Hadir dan tersimpan di Google Sheets'))
+      .catch(err=>toast('Gagal sinkron ke Google Sheets: '+err.message));
     adminRender('attendance');
     renderStudents();
-    toast('Semua siswa ditandai Hadir dan dikirim ke Google Sheets');
   });
  }
  else if(tab==='face-attendance'){
@@ -648,6 +655,7 @@ function renderAccount(){
  document.getElementById('cropApply')?.addEventListener('click',()=>{const u=getSession();if(!u||!cropImage)return;const size=cropSize(),out=document.createElement('canvas');out.width=720;out.height=720;const ctx=out.getContext('2d');ctx.clearRect(0,0,720,720);const scale=Math.max(size/cropImage.width,size/cropImage.height)*cropScale;const w=cropImage.width*scale,h=cropImage.height*scale;const x=(size-w)/2+cropX,y=(size-h)/2+cropY;const factor=720/size;ctx.drawImage(cropImage,x*factor,y*factor,w*factor,h*factor);try{const photos=getPhotos();photos[u.key]=out.toDataURL('image/jpeg',0.9);localStorage.setItem(photoKey,JSON.stringify(photos));closeCrop();renderAccount();renderStudents();document.getElementById('profilePhotoInput').value='';profileToast('Foto Profile berhasil disimpan.')}catch(err){toast('Penyimpanan foto penuh. Coba foto yang lebih kecil.')}});
  document.getElementById('changePhotoBtn')?.addEventListener('click',()=>document.getElementById('profilePhotoInput')?.click());document.getElementById('profilePhotoInput')?.addEventListener('change',e=>{const file=e.target.files?.[0];if(!file)return;if(!file.type.startsWith('image/')){toast('Pilih file gambar.');e.target.value='';return}if(file.size>8*1024*1024){toast('Foto maksimal 8 MB.');e.target.value='';return}openCrop(file)});
  document.getElementById('deletePhotoBtn')?.addEventListener('click',()=>{const u=getSession();if(!u)return;const photos=getPhotos();delete photos[u.key];localStorage.setItem(photoKey,JSON.stringify(photos));renderAccount();renderStudents();toast('Foto Profile dihapus')});
+ document.querySelectorAll('[data-toggle-password]').forEach(btn=>btn.addEventListener('click',()=>{const input=document.getElementById(btn.dataset.togglePassword);if(!input)return;const show=input.type==='password';input.type=show?'text':'password';btn.textContent=show?'Sembunyikan':'Tampilkan'}));
  try{if(getSession())renderAccount();else guestTop()}catch{guestTop()}
  syncAdminMenu()
  window.__CLASS_ACCOUNTS=ACCOUNTS;
@@ -1100,6 +1108,20 @@ function showFacePreview(data,meta){
  const prev=document.getElementById('facePreviewWrap'),img=document.getElementById('facePreview'),m=document.getElementById('facePreviewMeta'),actions=document.getElementById('faceSubmitActions');
  if(img)img.src=data;if(m)m.textContent=meta||'';if(prev){prev.hidden=false;prev.dataset.previewSrc=data||'';prev.dataset.previewMeta=meta||''}if(actions)actions.hidden=false;
 }
+function attendanceJsonp(action,params={}){
+ return new Promise((resolve,reject)=>{
+  const url=String(window.MANUAL_ATTENDANCE_URL||window.DRIVE_UPLOAD_URL||'').trim();
+  if(!url)return reject(new Error('URL Apps Script kosong'));
+  const cb='xiAttendanceWrite_'+Date.now()+'_'+Math.floor(Math.random()*100000),script=document.createElement('script');
+  const query=new URLSearchParams({action,callback:cb,...Object.fromEntries(Object.entries(params).map(([k,v])=>[k,String(v??'')]))});
+  const timer=setTimeout(()=>{cleanup();reject(new Error('Apps Script timeout'))},12000);
+  function cleanup(){clearTimeout(timer);delete window[cb];script.remove()}
+  window[cb]=data=>{cleanup();data?.ok?resolve(data):reject(new Error(data?.error||'Gagal menyimpan ke Spreadsheet'))};
+  script.onerror=()=>{cleanup();reject(new Error('Apps Script tidak dapat dihubungi'))};
+  script.src=url+(url.includes('?')?'&':'?')+query.toString();
+  document.body.appendChild(script);
+ });
+}
 function postAttendanceForm(url,fields){
  if(!url)return false;
  const iframe=document.createElement('iframe');iframe.name='attendanceSync_'+Date.now();iframe.style.display='none';document.body.appendChild(iframe);
@@ -1108,12 +1130,14 @@ function postAttendanceForm(url,fields){
  document.body.appendChild(form);form.submit();setTimeout(()=>{form.remove();iframe.remove()},20000);return true;
 }
 function syncManualAttendanceToSheets(record){
- if(!window.MANUAL_ATTENDANCE_URL)return;
- postAttendanceForm(window.MANUAL_ATTENDANCE_URL,{action:'saveManualAttendance',...record});
+ const url=String(window.MANUAL_ATTENDANCE_URL||'').trim();
+ if(!url)return Promise.reject(new Error('URL Apps Script kosong'));
+ return attendanceJsonp('saveManualAttendance',record);
 }
 function syncManualAttendanceBatchToSheets(records){
- if(!window.MANUAL_ATTENDANCE_URL)return;
- postAttendanceForm(window.MANUAL_ATTENDANCE_URL,{action:'saveManualAttendanceBatch',records:JSON.stringify(records)});
+ const url=String(window.MANUAL_ATTENDANCE_URL||'').trim();
+ if(!url)return Promise.reject(new Error('URL Apps Script kosong'));
+ return attendanceJsonp('saveManualAttendanceBatch',{records:JSON.stringify(records)});
 }
 function getLiveFaceLocation(){
  return new Promise((resolve,reject)=>{
@@ -1231,26 +1255,36 @@ function formatAttendanceDateTime(date,time){
 }
 function attendanceStatusLabel(st){return st==='H'?'Hadir':st==='I'?'Izin':st==='A'?'Alfa':'Belum Absen'}
 function renderUnifiedAttendance(accounts,manual,photos){
- const list=accounts.map(a=>{
+ const normal=[];
+ const pending=[];
+ accounts.forEach(a=>{
    const r=photos[a.nisn]||{};
    const status=manual[a.nisn]||r.status||'';
    const hasPhoto=!!(r.image||r.thumbnail||r.url);
    const date=r.date||localDateKey();
-   const time=r.time||'';
+   const time=r.time || (r.timestamp ? new Date(r.timestamp).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}) : '');
    const displayName=r.name||a.name||'Siswa';
    const label=attendanceStatusLabel(status);
    const when=formatAttendanceDateTime(date,time||'');
    const initial=escapeHTML((a.first||displayName||'S').charAt(0));
+
    if(hasPhoto){
-     const src=r.image||r.thumbnail||r.url;
-     return `<article class="attendance-unified-item has-photo"><span class="attendance-avatar"><img src="${escapeHTML(src)}" alt="Foto ${escapeHTML(displayName)}" loading="lazy"></span><div class="attendance-unified-main"><b>${escapeHTML(displayName)}</b><small>${escapeHTML(label)}${when?' • '+escapeHTML(when):''}</small><em>Bukti foto tersedia</em></div><span class="attendance-status-badge ${status.toLowerCase()||'pending'}">${escapeHTML(label)}</span></article>`;
+     normal.push(`<article class="attendance-unified-item has-photo"><span class="attendance-avatar"><img src="${escapeHTML(r.image||r.thumbnail||r.url)}" alt="Foto ${escapeHTML(displayName)}" loading="lazy"></span><div class="attendance-unified-main"><b>${escapeHTML(displayName)}</b><small>${escapeHTML(label)}${when?' • '+escapeHTML(when):''}</small><em>Bukti foto tersedia</em></div><span class="attendance-status-badge ${status.toLowerCase()||'pending'}">${escapeHTML(label)}</span></article>`);
+   }else if(status){
+     normal.push(`<article class="attendance-unified-item text-only"><span class="attendance-avatar fallback">${initial}</span><div class="attendance-unified-main"><b>${escapeHTML(displayName)}</b><small>${escapeHTML(label)}${when?' • '+escapeHTML(when):''}</small><em>Tidak ada foto — absensi manual oleh admin</em></div><span class="attendance-status-badge ${status.toLowerCase()}">${escapeHTML(label)}</span></article>`);
+   }else{
+     pending.push(`<article class="attendance-pending-card"><div class="attendance-pending-top"><span class="attendance-pending-number">${pending.length+1}</span><span class="attendance-avatar fallback">${initial}</span><span class="attendance-status-badge pending">Belum</span></div><div class="attendance-pending-info"><b>${escapeHTML(displayName)}</b><small>${escapeHTML(a.nisn||'NISN tidak tersedia')}</small></div><div class="attendance-pending-line"><span></span>Belum absen hari ini</div></article>`);
    }
-   if(status){
-     return `<article class="attendance-unified-item text-only"><span class="attendance-avatar fallback">${initial}</span><div class="attendance-unified-main"><b>${escapeHTML(displayName)}</b><small>${escapeHTML(label)}${when?' • '+escapeHTML(when):''}</small><em>Tidak ada foto — absensi manual oleh admin</em></div><span class="attendance-status-badge ${status.toLowerCase()}">${escapeHTML(label)}</span></article>`;
-   }
-   return `<article class="attendance-unified-item pending"><span class="attendance-avatar fallback">${initial}</span><div class="attendance-unified-main"><b>${escapeHTML(displayName)}</b><small>NISN: ${escapeHTML(a.nisn||'-')}</small><em>Belum ada absensi hari ini</em></div><span class="attendance-status-badge pending">Belum</span></article>`;
- }).join('');
- return list||'<div class="face-empty">Data siswa belum tersedia.</div>';
+ });
+
+ const normalHtml=normal.join('');
+ const pendingHtml=pending.length
+   ? `<section class="attendance-pending-section"><div class="attendance-pending-heading"><div><span class="eyebrow">PENDING ATTENDANCE</span><h5>Belum Absen</h5><small>${pending.length} siswa belum melakukan absensi hari ini.</small></div><strong>${pending.length}</strong></div><div class="attendance-pending-grid">${pending.join('')}</div></section>`
+   : '';
+
+ return (normalHtml || pendingHtml)
+   ? `${normalHtml ? `<div class="attendance-completed-list">${normalHtml}</div>` : ''}${pendingHtml}`
+   : '<div class="face-empty">Data siswa belum tersedia.</div>';
 }
 function updateUnifiedAttendanceSummary(accounts,manual,photos){
  const counts={H:0,I:0,A:0,none:0};

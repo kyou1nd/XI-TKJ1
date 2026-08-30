@@ -329,19 +329,25 @@
 <div class="modal account-modal" id="accountModal" aria-hidden="true">
   <div class="account-modal-box">
     <button class="modal-close" id="accountModalClose" aria-label="Tutup">×</button>
-    <div id="accountGuestView">
-      <div class="account-login-hero">
-        <div class="account-login-hero-copy">
-          <span class="eyebrow">XI TKJ 1 • PRIVATE AREA</span>
-          <h2>Selamat datang kembali.</h2>
-          <p>Masuk untuk membuka profil, fitur siswa, atau Control Panel admin.</p>
+    <div id="accountGuestView" class="login-shell">
+      <div class="login-showcase">
+        <div class="login-orb login-orb-a"></div><div class="login-orb login-orb-b"></div>
+        <div class="login-showcase-top"><span class="login-brand-dot">XI</span><span>XI TKJ 1</span><span class="login-private">PRIVATE AREA</span></div>
+        <div class="login-showcase-copy">
+          <span class="eyebrow">DIGITAL CLASSROOM</span>
+          <h2>Masuk ke ruang<br><strong>kelas kamu.</strong></h2>
+          <p>Satu akun untuk membuka profil, aktivitas siswa, dan Control Panel admin.</p>
         </div>
-        <div class="account-login-hero-badge"><strong>XI</strong><small>TKJ 1</small></div>
+        <div class="login-showcase-points"><span><b>01</b> Profil personal</span><span><b>02</b> Absensi terhubung</span><span><b>03</b> Data kelas terpusat</span></div>
       </div>
-      <div class="account-modal-head"><div><span class="eyebrow">ACCOUNT ACCESS</span><h2>Login Akun</h2><p>Pilih jenis akun lalu masukkan data login kamu.</p></div><div class="account-big-icon">A</div></div>
-      <div class="auth-choice"><button class="auth-choice-btn active" data-auth-modal-view="student"><span>S</span><b>Akun Siswa</b><small>Login pakai NISN</small></button><button class="auth-choice-btn" data-auth-modal-view="admin"><span>AD</span><b>Admin</b><small>Control Panel</small></button></div>
-      <div class="modal-login-view active" id="studentModalAuth"><form id="studentLoginForm"><label>NISN<input id="studentUsername" inputmode="numeric" autocomplete="username" placeholder="Enter username" required></label><label>Password<input id="studentPassword" type="password" autocomplete="current-password" placeholder="Enter password" required></label><button class="btn btn-primary auth-submit" type="submit">Masuk sebagai Siswa →</button><small id="studentLoginError" class="auth-error"></small></form></div>
-      <div class="modal-login-view" id="adminModalAuth"><form id="adminLoginForm"><label>Username Admin<input id="adminUsername" autocomplete="username" placeholder="Enter username" required></label><label>Password<input id="adminPassword" type="password" autocomplete="current-password" placeholder="Enter password" required></label><button class="btn btn-primary auth-submit" type="submit">Masuk ke Control Panel →</button><small id="adminLoginError" class="auth-error"></small></form></div>
+      <div class="login-panel">
+        <div class="login-panel-head"><div><span class="eyebrow">ACCOUNT ACCESS</span><h2>Welcome back.</h2><p>Masukkan akun untuk melanjutkan.</p></div><div class="login-live"><i></i> SYSTEM READY</div></div>
+        <div class="auth-choice"><button class="auth-choice-btn active" data-auth-modal-view="student"><span class="auth-choice-mark">S</span><b>Akun Siswa</b><small>NISN + password</small><em>›</em></button><button class="auth-choice-btn" data-auth-modal-view="admin"><span class="auth-choice-mark">AD</span><b>Administrator</b><small>Control Panel</small><em>›</em></button></div>
+        <div class="login-security-note"><span>SECURE ACCESS</span><small>Gunakan akun yang sudah terdaftar. Jangan bagikan password.</small></div>
+        <div class="modal-login-view active" id="studentModalAuth"><form id="studentLoginForm"><label><span>NISN</span><div class="login-input-wrap"><b>01</b><input id="studentUsername" inputmode="numeric" autocomplete="username" placeholder="Masukkan NISN" required></div></label><label><span>Password</span><div class="login-input-wrap"><b>02</b><input id="studentPassword" type="password" autocomplete="current-password" placeholder="Masukkan password" required><button type="button" class="password-toggle" data-toggle-password="studentPassword">Tampilkan</button></div></label><div class="login-options"><span>● Session aman</span><span>XI TKJ 1</span></div><button class="btn btn-primary auth-submit" type="submit"><span>Masuk sebagai Siswa</span><b>→</b></button><small id="studentLoginError" class="auth-error"></small></form></div>
+        <div class="modal-login-view" id="adminModalAuth"><form id="adminLoginForm"><label><span>Username Admin</span><div class="login-input-wrap"><b>01</b><input id="adminUsername" autocomplete="username" placeholder="Masukkan username admin" required></div></label><label><span>Password</span><div class="login-input-wrap"><b>02</b><input id="adminPassword" type="password" autocomplete="current-password" placeholder="Masukkan password admin" required><button type="button" class="password-toggle" data-toggle-password="adminPassword">Tampilkan</button></div></label><div class="login-options"><span>● Admin session</span><span>PRIVATE CONTROL</span></div><button class="btn btn-primary auth-submit" type="submit"><span>Masuk ke Control Panel</span><b>→</b></button><small id="adminLoginError" class="auth-error"></small></form></div>
+        <div class="login-foot"><span>XI TKJ 1 • DIGITAL CLASS</span><span>v2.0</span></div>
+      </div>
     </div>
     <div id="profileToast" class="profile-toast" aria-live="polite"></div>
     <div id="accountProfileView" hidden>
