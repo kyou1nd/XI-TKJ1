@@ -8,7 +8,7 @@ const MANUAL_SHEET = 'Absensi Manual';
 const FACE_SHEET = 'Absensi Foto Muka';
 
 function folder_(){ return DriveApp.getFolderById(FOLDER_ID); }
-function ss_(){ return SpreadsheetApp.openById(SPREADSHEET_ID); }
+function ss_(){ const ss=SpreadsheetApp.openById(SPREADSHEET_ID); try{ss.setSpreadsheetTimeZone('Asia/Jakarta')}catch(_){} return ss; }
 function clean_(s){ return String(s||'').replace(/[\\/:*?"<>|#%{}~&]/g,'_').slice(0,120); }
 function sheet_(name, headers){
   const ss=ss_(); let sh=ss.getSheetByName(name);
@@ -16,37 +16,68 @@ function sheet_(name, headers){
   return sh;
 }
 function json_(obj){ return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON); }
+function jsonp_(obj,cb){
+  if(cb && /^[A-Za-z_$][0-9A-Za-z_$]*$/.test(cb)) return ContentService.createTextOutput(cb+'('+JSON.stringify(obj)+');').setMimeType(ContentService.MimeType.JAVASCRIPT);
+  return json_(obj);
+}
 
 function doPost(e){
   try{
     const p=e.parameter||{}, action=p.action||'';
     if(action==='uploadFaceAttendance') return saveFace_(p);
-    if(action==='saveManualAttendance') return saveManual_(p);
-    if(action==='saveManualAttendanceBatch') return saveManualBatch_(p);
+    if(action==='saveManualAttendance') return json_(saveManual_(p));
+    if(action==='saveManualAttendanceBatch') return json_(saveManualBatch_(p));
+    if(action==='deleteManualAttendance') return json_(deleteManual_(p));
     return json_({ok:false,error:'Unknown action'});
   }catch(err){ return json_({ok:false,error:String(err)}); }
 }
 
 function saveManual_(p){
   const date=clean_(p.date), nisn=clean_(p.nisn), name=clean_(p.name), status=clean_(p.status);
-  if(!date||!nisn||!name||!status) return json_({ok:false,error:'Data absensi manual tidak lengkap.'});
-  const sh=sheet_(MANUAL_SHEET,['Timestamp','Tanggal','NISN','Nama','Kelas','Status','Keterangan']);
-  const rows=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,7).getValues():[];
-  let found=false;
-  rows.forEach((r,i)=>{
-    if(String(r[1])===date && String(r[2])===nisn){
-      sh.getRange(i+2,1,1,7).setValues([[new Date(),date,nisn,name,'XI TKJ 1',status,clean_(p.keterangan)]]);
-      found=true;
+  if(!date||!nisn||!name||!status) return {ok:false,error:'Data absensi manual tidak lengkap.'};
+
+  const lock=LockService.getScriptLock();
+  lock.tryLock(8000);
+  try{
+    const sh=sheet_(MANUAL_SHEET,['Timestamp','Tanggal','NISN','Nama','Kelas','Status','Keterangan']);
+    const now=new Date();
+    const rows=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,7).getValues():[];
+    let foundRow=0;
+    for(let i=rows.length-1;i>=0;i--){
+      if(String(rows[i][1])===date && String(rows[i][2])===nisn){foundRow=i+2;break;}
     }
-  });
-  if(!found) sh.appendRow([new Date(),date,nisn,name,'XI TKJ 1',status,clean_(p.keterangan)]);
-  return json_({ok:true});
+    const row=[now,date,nisn,name,'XI TKJ 1',status,clean_(p.keterangan)];
+    if(foundRow) sh.getRange(foundRow,1,1,7).setValues([row]);
+    else sh.appendRow(row);
+    SpreadsheetApp.flush();
+    return {ok:true,date,nisn,name,status,timestamp:now.toISOString()};
+  }finally{
+    try{lock.releaseLock()}catch(_){}
+  }
+}
+
+function deleteManual_(p){
+  const date=clean_(p.date), nisn=clean_(p.nisn);
+  if(!date||!nisn)return {ok:false,error:'Tanggal atau NISN tidak lengkap.'};
+  const sh=ss_().getSheetByName(MANUAL_SHEET);
+  if(!sh||sh.getLastRow()<2)return {ok:true,deleted:0};
+  const rows=sh.getRange(2,1,sh.getLastRow()-1,7).getValues();
+  let deleted=0;
+  for(let i=rows.length-1;i>=0;i--){
+    if(String(rows[i][1])===date&&String(rows[i][2])===nisn){sh.deleteRow(i+2);deleted++;}
+  }
+  SpreadsheetApp.flush();
+  return {ok:true,deleted};
 }
 
 function saveManualBatch_(p){
-  const list=JSON.parse(p.records||'[]');
-  list.forEach(r=>saveManual_({date:r.date,nisn:r.nisn,name:r.name,status:r.status,keterangan:r.keterangan||''}));
-  return json_({ok:true,count:list.length});
+  let list=[];
+  try{list=JSON.parse(p.records||'[]')}catch(e){return {ok:false,error:'Format records tidak valid.'}}
+  if(!Array.isArray(list)||!list.length)return {ok:false,error:'Tidak ada data absensi.'};
+  const results=[];
+  list.forEach(r=>results.push(saveManual_(r)));
+  const failed=results.filter(r=>!r.ok);
+  return {ok:failed.length===0,count:results.length,failed};
 }
 
 function saveFace_(p){
@@ -114,7 +145,7 @@ function attendanceSummary_(p){
   const manual={};
   if(manualSheet.getLastRow()>1){
     const rows=manualSheet.getRange(2,1,manualSheet.getLastRow()-1,7).getValues();
-    rows.forEach(r=>{if(String(r[1])===date&&r[2]) manual[String(r[2])]={date:String(r[1]),nisn:String(r[2]),name:String(r[3]||''),status:String(r[5]||''),keterangan:String(r[6]||''),timestamp:r[0] instanceof Date?r[0].toISOString():String(r[0]||'')};});
+    rows.forEach(r=>{if(String(r[1])===date&&r[2]) manual[String(r[2])]={date:String(r[1]),nisn:String(r[2]),name:String(r[3]||''),status:String(r[5]||''),keterangan:String(r[6]||''),timestamp:r[0] instanceof Date?r[0].toISOString():String(r[0]||''),time:r[0] instanceof Date?Utilities.formatDate(r[0],Session.getScriptTimeZone(),'HH:mm'):''};});
   }
   const face=[];
   if(faceSheet.getLastRow()>1){
@@ -129,6 +160,9 @@ function attendanceSummary_(p){
 
 function doGet(e){
   const p=e.parameter||{};
+  if(p.action==='saveManualAttendance') return jsonp_(saveManual_(p),p.callback);
+  if(p.action==='saveManualAttendanceBatch') return jsonp_(saveManualBatch_(p),p.callback);
+  if(p.action==='deleteManualAttendance') return jsonp_(deleteManual_(p),p.callback);
   if(p.action==='attendanceSummary') return attendanceSummary_(p);
   if(p.action==='attendanceStatus') return attendanceStatus_(p);
   if(p.action==='listFaceAttendance'){
