@@ -1,36 +1,20 @@
-/* ===== HERO TYPEWRITER: ketik maju -> hapus mundur -> ulang ===== */
+/* ===== HERO TYPEWRITER: selalu terlihat, ketik sekali ===== */
 (function initHeroTypewriter(){
  const title=document.getElementById("typingTitle");
  if(!title)return;
-
  const text="XI TKJ 1";
- let index=0;
- let deleting=false;
-
- function tick(){
-  title.textContent=text.slice(0,index);
-
-  if(!deleting){
-   if(index < text.length){
-    index++;
-    setTimeout(tick, 135);
-   }else{
-    deleting=true;
-    setTimeout(tick, 1100);
+ title.textContent=text;
+ // Ulangi efek ketik setelah halaman stabil tanpa meninggalkan teks kosong lama.
+ setTimeout(()=>{
+   let i=0;
+   function tick(){
+     i++; title.textContent=text.slice(0,i);
+     if(i<text.length) setTimeout(tick,120);
    }
-  }else{
-   if(index > 0){
-    index--;
-    setTimeout(tick, 75);
-   }else{
-    deleting=false;
-    setTimeout(tick, 500);
-   }
-  }
- }
-
- tick();
-})();
+   title.textContent=text.charAt(0);
+   setTimeout(tick,120);
+ }, 1800);
+})();;
 
 document.getElementById("year").textContent=new Date().getFullYear();
 
@@ -362,7 +346,7 @@ function adminRender(tab='overview'){
  if(tab==='overview')c.innerHTML=`<div class="admin-cards"><div class="admin-mini"><small>Siswa</small><b>${window.__CLASS_ACCOUNTS?.length||36}</b><span>anggota kelas</span></div><div class="admin-mini"><small>Tugas aktif</small><b>${tasks.filter(t=>t.status!=='done').length}</b><span>perlu dipantau</span></div><div class="admin-mini"><small>Saldo kas</small><b>${money(cash.balance)}</b><span>tersimpan lokal</span></div></div><h3 style="margin-top:25px">Kontrol Website</h3><p class="admin-help">Semua perubahan di panel ini disimpan di browser perangkat. Tidak membutuhkan server, bracket, API, atau manifest.</p><div class="task-actions"><button class="btn btn-primary" onclick="adminRender('website')">Atur Website</button><button class="mini-btn" onclick="adminRender('finance')">Atur Kas</button><button class="mini-btn" onclick="adminRender('schedule')">Atur Jadwal</button><button class="mini-btn" onclick="exportClassBackup()">Export backup</button></div>`;
  else if(tab==='website')c.innerHTML=`<h3>Pengaturan Tampilan Website</h3><p class="admin-help">Ubah teks utama yang tampil di halaman depan.</p><div class="admin-form-stack"><label>Teks welcome<input id="cfgWelcome" value="${escapeHTML(cfg.welcome||'WELCOME TO')}"></label><label>Judul utama<input id="cfgTitle" value="${escapeHTML(cfg.heroTitle||'XI TKJ 1')}"></label><label>Deskripsi<textarea id="cfgDesc">${escapeHTML(cfg.heroDescription||'Website digital resmi untuk jadwal, piket, siswa, guru, pengumuman, tugas, dan informasi XI TKJ 1.')}</textarea></label></div><div class="admin-save-row"><button class="btn btn-primary" id="saveWebsiteCfg">Simpan perubahan</button></div>`;
  else if(tab==='attendance'){
-  const now=new Date(), day=now.getDay(), dateKey=now.toISOString().slice(0,10);
+  const now=new Date(), day=now.getDay(), dateKey=localDateKey();
   const weekend=day===0||day===6;
   const accounts=window.__CLASS_ACCOUNTS||[];
   let data={};
@@ -958,15 +942,60 @@ function hideFaceAttendanceThanks(){
  if(box)box.classList.remove('attendance-done');
  if(thanks)thanks.hidden=true;
 }
-function openFaceAttendance(){
+function getManualAttendanceLocal(dateKey){
+ try{return JSON.parse(localStorage.getItem('xi-attendance-'+dateKey)||'{}')}catch{return {}}
+}
+function getAttendanceStatusJsonp(dateKey,nisn){
+ return new Promise((resolve,reject)=>{
+  if(!DRIVE_UPLOAD_URL)return reject(new Error('Backend belum diatur'));
+  const cb='xiAttendanceStatus_'+Date.now()+'_'+Math.floor(Math.random()*10000),script=document.createElement('script');
+  const timer=setTimeout(()=>{cleanup();reject(new Error('timeout'))},10000);
+  function cleanup(){clearTimeout(timer);delete window[cb];script.remove()}
+  window[cb]=data=>{cleanup();resolve(data)};
+  script.onerror=()=>{cleanup();reject(new Error('status error'))};
+  script.src=DRIVE_UPLOAD_URL+(DRIVE_UPLOAD_URL.includes('?')?'&':'?')+'action=attendanceStatus&date='+encodeURIComponent(dateKey)+'&nisn='+encodeURIComponent(nisn)+'&callback='+encodeURIComponent(cb);
+  document.body.appendChild(script);
+ });
+}
+function showFaceAttendanceLockedByManual(){
+ const box=document.querySelector('#faceAttendanceModal .face-attendance-box');
+ const thanks=document.getElementById('faceAttendanceThanks');
+ const meta=document.getElementById('faceAttendanceThanksMeta');
+ stopFaceCamera();
+ if(box)box.classList.add('attendance-done');
+ if(thanks)thanks.hidden=false;
+ if(meta)meta.textContent='Absensi hari ini sudah ditandai Hadir oleh admin. Kamu tidak perlu absen foto lagi.';
+}
+async function openFaceAttendance(){
  const u=faceSession();
  if(!u||u.role!=='student'){toast('Login sebagai siswa untuk menggunakan Absen Foto Muka.');return}
  const modal=document.getElementById('faceAttendanceModal');if(!modal)return;
+ const dateKey=localDateKey();
  modal.classList.add('show');modal.setAttribute('aria-hidden','false');resetFaceAttendanceUI();
- const local=getFaceAttendanceLocal(localDateKey());
+ const local=getFaceAttendanceLocal(dateKey);
  if(local[u.nisn]){showFaceAttendanceThanks(local[u.nisn]);return}
- if(DRIVE_UPLOAD_URL){loadDriveFaceAttendance(localDateKey(),false,u.nisn);setTimeout(()=>{const d=getFaceAttendanceLocal(localDateKey());if(!d[u.nisn])startFaceCamera()},450);}
- else setTimeout(()=>startFaceCamera(),120);
+ const manual=getManualAttendanceLocal(dateKey);
+ if(manual[u.nisn]==='H'){showFaceAttendanceLockedByManual();return}
+ if(DRIVE_UPLOAD_URL){
+  setFaceStatus('Memeriksa status absensi hari ini...','ready');
+  try{
+   const status=await getAttendanceStatusJsonp(dateKey,u.nisn);
+   if(status?.faceDone){
+    loadDriveFaceAttendance(dateKey,false,u.nisn);
+    showFaceAttendanceThanks(status.record||{});
+    return;
+   }
+   if(status?.manualStatus==='H'){
+    manual[u.nisn]='H';localStorage.setItem('xi-attendance-'+dateKey,JSON.stringify(manual));
+    showFaceAttendanceLockedByManual();
+    return;
+   }
+  }catch(_){/* fallback ke data lokal */}
+  await loadDriveFaceAttendance(dateKey,false,u.nisn);
+  const d=getFaceAttendanceLocal(dateKey);
+  if(d[u.nisn]){showFaceAttendanceThanks(d[u.nisn]);return}
+  startFaceCamera();
+ }else setTimeout(()=>startFaceCamera(),120);
 }
 function closeFaceAttendance(){
  const modal=document.getElementById('faceAttendanceModal');modal?.classList.remove('show');modal?.setAttribute('aria-hidden','true');stopFaceCamera();
@@ -1081,8 +1110,13 @@ async function submitFaceAttendance(){
  setFaceStatus('Menempelkan lokasi, tanggal, dan waktu ke foto...','ready');
  try{record.image=await addAttendanceWatermark(faceCapturedData,record);faceCapturedData=record.image;showFacePreview(record.image,record.date+' • '+record.time+' • Lokasi ditempel di foto');}catch(e){return toast('Watermark foto gagal dibuat. Coba ambil foto lagi.')}
  data[u.nisn]=record;saveFaceAttendanceLocal(dateKey,data);
+ // Absen foto otomatis menjadi H pada absensi manual hari yang sama.
+ const manual=getManualAttendanceLocal(dateKey);
+ manual[u.nisn]='H';
+ localStorage.setItem('xi-attendance-'+dateKey,JSON.stringify(manual));
+ syncManualAttendanceToSheets({date:dateKey,nisn:u.nisn,name:u.name,status:'H',keterangan:'Otomatis dari Absen Foto Muka'});
  if(DRIVE_UPLOAD_URL)uploadFaceToDrive(record);
- setFaceStatus('Absensi tersimpan. Lokasi real-time akurasi ±'+loc.accuracy+' meter ikut dikirim.','success');
+ setFaceStatus('Absensi foto berhasil. Status manual otomatis menjadi H.','success');
  document.getElementById('faceSubmitActions').hidden=true;document.getElementById('faceCameraCapture').disabled=true;
  showFaceAttendanceThanks(record);
  toast('Absensi foto + lokasi berhasil dikirim');
@@ -1182,3 +1216,14 @@ syncFaceAttendanceMenu();
 document.getElementById('facePhotoViewerImage')?.addEventListener('click',e=>{
  e.currentTarget.classList.toggle('zoomed');
 });
+
+
+/* FINAL HERO CLASS PHOTO FIX: keep the real 16:9 class photo and the typing title visible */
+.hero.section{padding-top:22px!important}
+.hero-card.hero-class-photo{position:relative!important;width:100%!important;aspect-ratio:16/9!important;min-height:0!important;height:auto!important;overflow:hidden!important;border-radius:28px!important;background:#0c1224!important;display:block!important}
+.hero-class-photo-bg{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;display:block!important;object-fit:cover!important;object-position:center center!important;z-index:0!important}
+.hero-photo-overlay{position:absolute!important;inset:0!important;display:block!important;z-index:1!important;background:linear-gradient(90deg,rgba(4,8,18,.48),rgba(4,8,18,.12) 55%,rgba(4,8,18,.30))!important}
+.hero-class-photo .hero-content{position:absolute!important;inset:0!important;z-index:2!important;width:100%!important;height:100%!important;padding:20px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;text-align:center!important}
+.hero-class-photo .typewriter-title{position:relative!important;display:inline-block!important;visibility:visible!important;opacity:1!important;margin:0!important;color:#fff!important;font-size:clamp(46px,8vw,108px)!important;line-height:1!important;letter-spacing:-.04em!important;text-shadow:0 4px 22px rgba(0,0,0,.9)!important;z-index:3!important}
+.hero-class-photo .welcome{display:block!important;margin:0 0 14px!important;color:#fff!important;opacity:.95!important;text-shadow:0 2px 12px rgba(0,0,0,.85)!important}
+@media(max-width:650px){.hero-card.hero-class-photo{aspect-ratio:16/9!important;min-height:0!important;border-radius:22px!important}.hero-class-photo .hero-content{padding:14px!important}.hero-class-photo .typewriter-title{font-size:clamp(40px,13vw,66px)!important}.hero-class-photo .welcome{font-size:8px!important;letter-spacing:2px!important;margin-bottom:8px!important}.hero-class-photo .hero-description,.hero-class-photo .hero-buttons,.hero-class-photo .hero-live-strip,.hero-class-photo .badge{display:none!important}}

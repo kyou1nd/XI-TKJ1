@@ -5,10 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#4055ff">
 <title>XI TKJ 1 — Class Website</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=hero-fix-3">
 <meta name="description" content="XI TKJ 1 digital class website untuk informasi, tugas, materi, jadwal, dan akun siswa.">
 
 <link rel="icon" href="assets/kyou-logo.svg">
+
+<style>
+/* HERO FIX FINAL: foto asli 16:9 + tulisan selalu di tengah */
+@media (max-width:700px){
+  .hero.section{padding-top:25px!important}
+  .hero-card.hero-class-photo{width:100%!important;height:auto!important;min-height:0!important;aspect-ratio:16/9!important;display:grid!important;place-items:center!important}
+  .hero-class-photo-bg{width:100%!important;height:100%!important;object-fit:cover!important;object-position:center center!important}
+  .hero-class-photo .hero-content{position:absolute!important;inset:0!important;z-index:10!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:18px!important}
+  .hero-class-photo .typewriter-title{display:block!important;visibility:visible!important;opacity:1!important;color:#fff!important;font-size:clamp(46px,16vw,76px)!important;line-height:1!important;text-shadow:0 3px 18px rgba(0,0,0,.85)!important}
+  .hero-class-photo .welcome{display:block!important;position:absolute!important;top:50%!important;transform:translateY(-125%)!important;color:#fff!important}
+  .hero-class-photo .hero-description,.hero-class-photo .hero-buttons,.hero-class-photo .hero-live-strip,.hero-class-photo .badge{display:none!important}
+}
+</style>
 </head>
 <body>
 
@@ -65,7 +78,7 @@
 <div class="hero-content">
 <div class="badge"><span class="status-dot"></span>Website Kelas Aktif</div>
 <p class="welcome">WELCOME TO</p>
-<h1 id="typingTitle" class="typewriter-title" aria-label="XI TKJ 1"></h1>
+<h1 id="typingTitle" class="typewriter-title" aria-label="XI TKJ 1">XI TKJ 1</h1>
 <p class="hero-description">Website digital resmi untuk jadwal, piket, siswa, guru, pengumuman, tugas, dan informasi XI TKJ 1.</p>
 <div class="hero-buttons">
 <a href="#students" class="btn btn-primary">Jelajahi Kelas →</a>
