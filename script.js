@@ -1,20 +1,44 @@
-/* ===== HERO TYPEWRITER: selalu terlihat, ketik sekali ===== */
+/* ===== HERO TYPEWRITER: ketik → jeda → hapus → ulang ===== */
 (function initHeroTypewriter(){
- const title=document.getElementById("typingTitle");
- if(!title)return;
- const text="XI TKJ 1";
- title.textContent=text;
- // Ulangi efek ketik setelah halaman stabil tanpa meninggalkan teks kosong lama.
- setTimeout(()=>{
-   let i=0;
-   function tick(){
-     i++; title.textContent=text.slice(0,i);
-     if(i<text.length) setTimeout(tick,120);
-   }
-   title.textContent=text.charAt(0);
-   setTimeout(tick,120);
- }, 1800);
-})();;
+  const title=document.getElementById("typingTitle");
+  if(!title)return;
+
+  const text="XI TKJ 1";
+  const typeSpeed=140;
+  const deleteSpeed=95;
+  const endPause=1400;
+  const startPause=350;
+  let index=0;
+  let deleting=false;
+
+  function animate(){
+    title.textContent=text.slice(0,index);
+
+    if(!deleting && index<text.length){
+      index++;
+      setTimeout(animate,typeSpeed);
+      return;
+    }
+
+    if(!deleting && index===text.length){
+      deleting=true;
+      setTimeout(animate,endPause);
+      return;
+    }
+
+    if(deleting && index>0){
+      index--;
+      setTimeout(animate,deleteSpeed);
+      return;
+    }
+
+    deleting=false;
+    setTimeout(animate,startPause);
+  }
+
+  title.textContent='';
+  setTimeout(animate,startPause);
+})();
 
 document.getElementById("year").textContent=new Date().getFullYear();
 

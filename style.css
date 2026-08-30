@@ -994,3 +994,6 @@ body.dark .crop-square{border-color:rgba(255,255,255,.8)}
 .hero-class-photo .welcome{display:block!important;margin:0 0 14px!important;color:#fff!important;opacity:.95!important;text-shadow:0 2px 12px rgba(0,0,0,.85)!important}
 @media(max-width:650px){.hero-card.hero-class-photo{aspect-ratio:16/9!important;min-height:0!important;border-radius:22px!important}.hero-class-photo .hero-content{padding:14px!important}.hero-class-photo .typewriter-title{font-size:clamp(40px,13vw,66px)!important}.hero-class-photo .welcome{font-size:8px!important;letter-spacing:2px!important;margin-bottom:8px!important}.hero-class-photo .hero-description,.hero-class-photo .hero-buttons,.hero-class-photo .hero-live-strip,.hero-class-photo .badge{display:none!important}}
 
+
+/* HERO TYPEWRITER: tanpa garis/kursor putih */
+.typewriter-title::after{content:none!important;display:none!important;}
