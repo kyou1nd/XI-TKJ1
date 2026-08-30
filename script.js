@@ -855,6 +855,38 @@ function compressFaceImage(dataUrl,maxSide=720,quality=.78){
   img.src=dataUrl;
  });
 }
+
+function addAttendanceWatermark(dataUrl,record){
+ return new Promise((resolve,reject)=>{
+  const img=new Image();
+  img.onload=()=>{
+   try{
+    const c=document.createElement('canvas');c.width=img.naturalWidth||img.width;c.height=img.naturalHeight||img.height;
+    const ctx=c.getContext('2d');ctx.drawImage(img,0,0,c.width,c.height);
+    const pad=Math.max(18,Math.round(c.width*.028)),fs=Math.max(15,Math.round(c.width*.028));
+    const lines=[
+      'XI TKJ 1 • ABSENSI FOTO',
+      '📅 '+record.date+'   ⏰ '+record.time,
+      '📍 '+Number(record.latitude).toFixed(6)+', '+Number(record.longitude).toFixed(6),
+      'Akurasi ±'+Math.round(record.accuracy||0)+' m'
+    ];
+    ctx.font='700 '+fs+'px Arial, sans-serif';
+    ctx.textBaseline='top';
+    const lineH=Math.round(fs*1.35);
+    const maxW=Math.max(...lines.map(x=>ctx.measureText(x).width));
+    const boxW=maxW+pad*2,boxH=lineH*lines.length+pad*2;
+    const x=pad,y=c.height-boxH-pad;
+    ctx.fillStyle='rgba(3,7,18,.72)';ctx.fillRect(x,y,boxW,boxH);
+    ctx.strokeStyle='rgba(255,255,255,.28)';ctx.lineWidth=Math.max(1,Math.round(c.width*.002));ctx.strokeRect(x,y,boxW,boxH);
+    ctx.fillStyle='#fff';
+    lines.forEach((line,i)=>ctx.fillText(line,x+pad,y+pad+i*lineH));
+    resolve(c.toDataURL('image/jpeg',.9));
+   }catch(e){reject(e)}
+  };
+  img.onerror=()=>reject(new Error('Foto gagal diproses'));img.src=dataUrl;
+ });
+}
+
 function openFaceAttendance(){
  const u=faceSession();
  if(!u||u.role!=='student'){toast('Login sebagai siswa untuk menggunakan Absen Foto Muka.');return}
@@ -945,7 +977,9 @@ async function submitFaceAttendance(){
  let loc;
  try{loc=await getLiveFaceLocation();}catch(e){setFaceStatus('Lokasi diperlukan untuk absensi foto. Aktifkan GPS dan izinkan lokasi, lalu coba lagi.','error');return toast('Lokasi belum diizinkan.');}
  const mapsUrl='https://www.google.com/maps?q='+encodeURIComponent(loc.latitude+','+loc.longitude);
- const record={nisn:u.nisn,name:u.name,date:dateKey,time:now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}),image:faceCapturedData,source:DRIVE_UPLOAD_URL?'local+drive':'local',latitude:loc.latitude,longitude:loc.longitude,accuracy:loc.accuracy,mapsUrl:mapsUrl};
+ let record={nisn:u.nisn,name:u.name,date:dateKey,time:now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}),image:faceCapturedData,source:DRIVE_UPLOAD_URL?'local+drive':'local',latitude:loc.latitude,longitude:loc.longitude,accuracy:loc.accuracy,mapsUrl:mapsUrl};
+ setFaceStatus('Menempelkan lokasi, tanggal, dan waktu ke foto...','ready');
+ try{record.image=await addAttendanceWatermark(faceCapturedData,record);faceCapturedData=record.image;showFacePreview(record.image,record.date+' • '+record.time+' • Lokasi ditempel di foto');}catch(e){return toast('Watermark foto gagal dibuat. Coba ambil foto lagi.')}
  data[u.nisn]=record;saveFaceAttendanceLocal(dateKey,data);
  if(DRIVE_UPLOAD_URL)uploadFaceToDrive(record);
  setFaceStatus('Absensi tersimpan. Lokasi real-time akurasi ±'+loc.accuracy+' meter ikut dikirim.','success');
@@ -994,7 +1028,7 @@ async function loadDriveFaceAttendance(dateKey,force=false,checkNisn=''){
  try{
   const res=await driveJsonp(dateKey);if(!res||!Array.isArray(res.records))return;
   const local=getFaceAttendanceLocal(dateKey),accounts=window.__CLASS_ACCOUNTS||[];
-  res.records.forEach(r=>{if(!r.nisn)return;local[r.nisn]=Object.assign({},local[r.nisn]||{},r,{source:'drive',image:r.thumbnail||r.url||local[r.nisn]?.image})});
+  res.records.forEach(r=>{if(!r.nisn)return;const preview=r.thumbnail||('https://drive.google.com/thumbnail?id='+encodeURIComponent(r.id||'')+'&sz=w1600')||r.url||local[r.nisn]?.image;local[r.nisn]=Object.assign({},local[r.nisn]||{},r,{source:'drive',image:preview})});
   saveFaceAttendanceLocal(dateKey,local);
   if(checkNisn&&local[checkNisn]){setFaceStatus('Kamu sudah tercatat absen foto hari ini di Google Drive.','success');showFacePreview(local[checkNisn].image,local[checkNisn].time||'Google Drive');document.getElementById('faceSubmitActions').hidden=true}
   if(document.getElementById('adminContent')&&document.querySelector('.admin-tab.active')?.dataset.admin==='face-attendance'){window.__faceDriveSkipNextLoad=true;adminRender('face-attendance')}
@@ -1027,7 +1061,19 @@ document.getElementById('faceCameraCapture')?.addEventListener('click',captureFa
 document.getElementById('facePhotoFile')?.addEventListener('change',e=>{const f=e.target.files?.[0];if(f)handleFaceFile(f);e.target.value=''});
 document.getElementById('faceRetake')?.addEventListener('click',resetFaceAttendanceUI);
 document.getElementById('faceSubmit')?.addEventListener('click',submitFaceAttendance);
+
+document.getElementById('adminContent')?.addEventListener('click',e=>{
+ const card=e.target.closest('.face-admin-photo');
+ if(!card)return;
+ e.preventDefault();
+ openFacePhotoViewer(card.dataset.src||'',card.dataset.meta||'');
+});
+
 document.getElementById('facePreviewWrap')?.addEventListener('click',()=>{const el=document.getElementById('facePreviewWrap');openFacePhotoViewer(el?.dataset.previewSrc||document.getElementById('facePreview')?.src,el?.dataset.previewMeta||document.getElementById('facePreviewMeta')?.textContent||'')});
 document.getElementById('facePhotoViewerClose')?.addEventListener('click',closeFacePhotoViewer);
 document.getElementById('facePhotoViewer')?.addEventListener('click',e=>{if(e.target.id==='facePhotoViewer')closeFacePhotoViewer()});
 syncFaceAttendanceMenu();
+
+document.getElementById('facePhotoViewerImage')?.addEventListener('click',e=>{
+ e.currentTarget.classList.toggle('zoomed');
+});
