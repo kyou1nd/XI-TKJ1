@@ -867,7 +867,7 @@ function addAttendanceWatermark(dataUrl,record){
     const lines=[
       'XI TKJ 1 • ABSENSI FOTO',
       '📅 '+record.date+'   ⏰ '+record.time,
-      '📍 '+Number(record.latitude).toFixed(6)+', '+Number(record.longitude).toFixed(6),
+      '📍 '+(record.locationText||record.address||'Lokasi tidak tersedia'),
       'Akurasi ±'+Math.round(record.accuracy||0)+' m'
     ];
     ctx.font='700 '+fs+'px Arial, sans-serif';
@@ -968,6 +968,23 @@ function getLiveFaceLocation(){
   }),err=>reject(err),{enableHighAccuracy:true,timeout:15000,maximumAge:0});
  });
 }
+
+async function getReadableLocation(lat,lon){
+ const fallback='Lokasi terdeteksi';
+ try{
+  const url='https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon);
+  const res=await fetch(url,{headers:{Accept:'application/json'}});
+  if(!res.ok)throw new Error('reverse geocode gagal');
+  const d=await res.json(),a=d.address||{};
+  const road=a.road||a.pedestrian||a.residential||a.neighbourhood||a.suburb||'';
+  const village=a.village||a.town||a.city_district||a.city||'';
+  const district=a.county||a.city_district||a.district||a.suburb||'';
+  const city=a.city||a.regency||a.county||a.town||'';
+  const state=a.state||a.province||'';
+  const parts=[road,village,district,city,state].filter((v,i,arr)=>v&&arr.indexOf(v)===i);
+  return parts.join(', ')||d.display_name||fallback;
+ }catch(e){return fallback}
+}
 async function submitFaceAttendance(){
  const u=faceSession();if(!u||u.role!=='student')return toast('Login sebagai siswa terlebih dahulu.');
  if(!faceCapturedData)return toast('Ambil foto wajah terlebih dahulu.');
@@ -977,7 +994,9 @@ async function submitFaceAttendance(){
  let loc;
  try{loc=await getLiveFaceLocation();}catch(e){setFaceStatus('Lokasi diperlukan untuk absensi foto. Aktifkan GPS dan izinkan lokasi, lalu coba lagi.','error');return toast('Lokasi belum diizinkan.');}
  const mapsUrl='https://www.google.com/maps?q='+encodeURIComponent(loc.latitude+','+loc.longitude);
- let record={nisn:u.nisn,name:u.name,date:dateKey,time:now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}),image:faceCapturedData,source:DRIVE_UPLOAD_URL?'local+drive':'local',latitude:loc.latitude,longitude:loc.longitude,accuracy:loc.accuracy,mapsUrl:mapsUrl};
+ setFaceStatus('Mencari nama jalan, desa, kecamatan, dan kota...','ready');
+ const locationText=await getReadableLocation(loc.latitude,loc.longitude);
+ let record={nisn:u.nisn,name:u.name,date:dateKey,time:now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}),image:faceCapturedData,source:DRIVE_UPLOAD_URL?'local+drive':'local',latitude:loc.latitude,longitude:loc.longitude,accuracy:loc.accuracy,mapsUrl:mapsUrl,locationText:locationText,address:locationText};
  setFaceStatus('Menempelkan lokasi, tanggal, dan waktu ke foto...','ready');
  try{record.image=await addAttendanceWatermark(faceCapturedData,record);faceCapturedData=record.image;showFacePreview(record.image,record.date+' • '+record.time+' • Lokasi ditempel di foto');}catch(e){return toast('Watermark foto gagal dibuat. Coba ambil foto lagi.')}
  data[u.nisn]=record;saveFaceAttendanceLocal(dateKey,data);
@@ -996,7 +1015,7 @@ function uploadFaceToDrive(record){
   form.enctype='application/x-www-form-urlencoded';
   form.acceptCharset='UTF-8';
   form.style.display='none';
-  const fields={action:'uploadFaceAttendance',date:record.date,time:record.time,nisn:record.nisn,name:record.name,mimeType:'image/jpeg',imageData:record.image.split(',')[1],latitude:record.latitude,longitude:record.longitude,accuracy:record.accuracy,mapsUrl:record.mapsUrl};
+  const fields={action:'uploadFaceAttendance',date:record.date,time:record.time,nisn:record.nisn,name:record.name,mimeType:'image/jpeg',imageData:record.image.split(',')[1],latitude:record.latitude,longitude:record.longitude,accuracy:record.accuracy,mapsUrl:record.mapsUrl,locationText:record.locationText||record.address||''};
   Object.entries(fields).forEach(([k,v])=>{
     const input=document.createElement('textarea');
     input.name=k;
@@ -1041,9 +1060,10 @@ function renderFaceAdminPhotos(data){
  return entries.sort((a,b)=>(a.time||'').localeCompare(b.time||'')).map(r=>{
    const full=r.name||accounts.find(x=>x.nisn===r.nisn)?.name||'Siswa';
    const src=r.image||r.thumbnail||r.url||'';
-   const locationText=r.mapsUrl?' • 📍 Lokasi tersimpan':'';
-    const meta=`${r.time||'Waktu tidak tersedia'} • ${r.source==='drive'?'Google Drive':'Perangkat'}${locationText}`;
-   return `<button type="button" class="face-admin-photo" data-src="${escapeHTML(src)}" data-meta="${escapeHTML(full+' • '+meta)}"><span class="face-admin-photo-image"><img src="${escapeHTML(src)}" alt="Foto absensi ${escapeHTML(full)}" loading="lazy"></span><span class="face-admin-photo-info"><span class="face-photo-status">ABSEN FOTO</span><b>${escapeHTML(nick(r))}</b><small>${escapeHTML(full)}</small><strong class="face-photo-time">${escapeHTML(r.time||'Waktu tidak tersedia')}</strong><em>Ketuk untuk buka foto${r.mapsUrl?' • Lokasi tersedia':''}</em></span><span class="face-photo-arrow">↗</span></button>`;
+   const locationText=r.locationText||r.address||'Lokasi tersimpan di foto';
+   const meta=`${r.time||'Waktu tidak tersedia'} • ${locationText}`;
+   const locationButton=r.mapsUrl?`<button type="button" class="face-location-btn" data-map="${escapeHTML(r.mapsUrl)}" data-location="${escapeHTML(locationText)}">📍 Cek Lokasi</button>`:'';
+   return `<article class="face-admin-photo"><button type="button" class="face-photo-open" data-src="${escapeHTML(src)}" data-meta="${escapeHTML(full+' • '+meta)}"><span class="face-admin-photo-image"><img src="${escapeHTML(src)}" alt="Foto absensi ${escapeHTML(full)}" loading="lazy"></span><span class="face-admin-photo-info"><span class="face-photo-status">ABSEN FOTO</span><b>${escapeHTML(nick(r))}</b><small>${escapeHTML(full)}</small><strong class="face-photo-time">${escapeHTML(r.time||'Waktu tidak tersedia')}</strong><em>${escapeHTML(locationText)}</em></span><span class="face-photo-arrow">↗</span></button>${locationButton}</article>`;
  }).join('');
 }
 
@@ -1063,7 +1083,9 @@ document.getElementById('faceRetake')?.addEventListener('click',resetFaceAttenda
 document.getElementById('faceSubmit')?.addEventListener('click',submitFaceAttendance);
 
 document.getElementById('adminContent')?.addEventListener('click',e=>{
- const card=e.target.closest('.face-admin-photo');
+ const mapBtn=e.target.closest('.face-location-btn');
+ if(mapBtn){e.preventDefault();e.stopPropagation();window.open(mapBtn.dataset.map,'_blank','noopener');return;}
+ const card=e.target.closest('.face-photo-open');
  if(!card)return;
  e.preventDefault();
  openFacePhotoViewer(card.dataset.src||'',card.dataset.meta||'');

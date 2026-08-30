@@ -831,3 +831,9 @@ body.dark .crop-square{border-color:rgba(255,255,255,.8)}
 /* FACE CHECK FIX — fullscreen/enlarge viewer */
 .face-photo-viewer{z-index:30000!important}.face-photo-viewer.show{display:flex!important;align-items:center;justify-content:center}.face-photo-viewer-box{width:min(1100px,96vw)!important;max-height:96vh!important}.face-photo-viewer-image{max-height:82vh!important;min-height:320px}.face-photo-viewer-image img{width:100%!important;height:auto!important;max-height:82vh!important;object-fit:contain!important;cursor:zoom-in}.face-photo-viewer-image img.zoomed{cursor:zoom-out;max-height:none!important;width:auto!important;max-width:none!important;transform:scale(1.7);transform-origin:center;transition:transform .2s ease}.face-photo-viewer-image{overflow:auto!important}.face-admin-photo{cursor:zoom-in!important}.face-admin-photo-image img{pointer-events:none}
 @media(max-width:600px){.face-photo-viewer-image{min-height:240px!important;max-height:80vh!important}.face-photo-viewer-box{padding:12px!important}.face-photo-viewer-head{padding-right:44px!important}}
+/* Location controls for face attendance admin */
+.face-admin-photo{display:block}
+.face-photo-open{width:100%;border:0;background:transparent;color:inherit;padding:0;text-align:left;cursor:pointer}
+.face-location-btn{margin:10px 12px 12px;width:calc(100% - 24px);border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:10px 12px;background:rgba(255,255,255,.06);color:inherit;font-weight:800;cursor:pointer}
+.face-location-btn:active{transform:scale(.98)}
+.face-admin-photo-info em{display:block;max-height:2.8em;overflow:hidden;line-height:1.35;font-style:normal}
