@@ -910,3 +910,75 @@ body.dark .crop-square{border-color:rgba(255,255,255,.8)}
   .hero-class-photo .hero-content{padding:74px 20px 44px}
   .hero-class-photo .typewriter-title{font-size:clamp(48px,16vw,76px)}
 }
+
+/* FIX HERO FOTO KELAS — 16:9, teks ketik selalu terlihat di tengah */
+.hero-card.hero-class-photo{
+  position:relative;
+  width:100%;
+  aspect-ratio:16 / 9;
+  min-height:0;
+  height:auto;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  isolation:isolate;
+}
+.hero-class-photo-bg{
+  position:absolute !important;
+  inset:0 !important;
+  width:100% !important;
+  height:100% !important;
+  object-fit:cover !important;
+  object-position:center center !important;
+  z-index:0 !important;
+}
+.hero-photo-overlay{
+  position:absolute !important;
+  inset:0 !important;
+  z-index:1 !important;
+  background:linear-gradient(180deg,rgba(5,10,22,.28),rgba(5,10,22,.42)) !important;
+  pointer-events:none;
+}
+.hero-class-photo .hero-content{
+  position:relative !important;
+  z-index:2 !important;
+  width:100% !important;
+  min-height:100%;
+  margin:0 !important;
+  padding:24px !important;
+  display:flex !important;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  color:#fff !important;
+}
+.hero-class-photo .typewriter-title{
+  display:inline-block !important;
+  position:relative !important;
+  z-index:3 !important;
+  min-width:0 !important;
+  margin:0 !important;
+  color:#fff !important;
+  opacity:1 !important;
+  visibility:visible !important;
+  font-size:clamp(42px,9vw,112px) !important;
+  line-height:1 !important;
+  text-shadow:0 4px 24px rgba(0,0,0,.8) !important;
+}
+.hero-class-photo .welcome{margin:0 0 10px !important;color:rgba(255,255,255,.9) !important;text-shadow:0 2px 12px rgba(0,0,0,.8)}
+.hero-class-photo .badge{margin-bottom:16px;background:rgba(8,12,25,.38);backdrop-filter:blur(8px)}
+@media(max-width:700px){
+  .hero-card.hero-class-photo{
+    aspect-ratio:16 / 9 !important;
+    min-height:0 !important;
+    height:auto !important;
+  }
+  .hero-class-photo .hero-content{padding:18px !important;}
+  .hero-class-photo .hero-description,
+  .hero-class-photo .hero-buttons,
+  .hero-class-photo .hero-live-strip{display:none !important;}
+  .hero-class-photo .badge{display:none !important;}
+  .hero-class-photo .welcome{font-size:9px !important;letter-spacing:2.5px !important;}
+  .hero-class-photo .typewriter-title{font-size:clamp(42px,15vw,68px) !important;}
+}
