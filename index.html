@@ -330,7 +330,15 @@
   <div class="account-modal-box">
     <button class="modal-close" id="accountModalClose" aria-label="Tutup">×</button>
     <div id="accountGuestView">
-      <div class="account-modal-head"><div><span class="eyebrow">XI TKJ 1 • ACCOUNT</span><h2>Login Akun</h2><p>Masuk langsung dari perangkat ini. Tidak membutuhkan backend atau bracket.</p></div><div class="account-big-icon">A</div></div>
+      <div class="account-login-hero">
+        <div class="account-login-hero-copy">
+          <span class="eyebrow">XI TKJ 1 • PRIVATE AREA</span>
+          <h2>Selamat datang kembali.</h2>
+          <p>Masuk untuk membuka profil, fitur siswa, atau Control Panel admin.</p>
+        </div>
+        <div class="account-login-hero-badge"><strong>XI</strong><small>TKJ 1</small></div>
+      </div>
+      <div class="account-modal-head"><div><span class="eyebrow">ACCOUNT ACCESS</span><h2>Login Akun</h2><p>Pilih jenis akun lalu masukkan data login kamu.</p></div><div class="account-big-icon">A</div></div>
       <div class="auth-choice"><button class="auth-choice-btn active" data-auth-modal-view="student"><span>S</span><b>Akun Siswa</b><small>Login pakai NISN</small></button><button class="auth-choice-btn" data-auth-modal-view="admin"><span>AD</span><b>Admin</b><small>Control Panel</small></button></div>
       <div class="modal-login-view active" id="studentModalAuth"><form id="studentLoginForm"><label>NISN<input id="studentUsername" inputmode="numeric" autocomplete="username" placeholder="Enter username" required></label><label>Password<input id="studentPassword" type="password" autocomplete="current-password" placeholder="Enter password" required></label><button class="btn btn-primary auth-submit" type="submit">Masuk sebagai Siswa →</button><small id="studentLoginError" class="auth-error"></small></form></div>
       <div class="modal-login-view" id="adminModalAuth"><form id="adminLoginForm"><label>Username Admin<input id="adminUsername" autocomplete="username" placeholder="Enter username" required></label><label>Password<input id="adminPassword" type="password" autocomplete="current-password" placeholder="Enter password" required></label><button class="btn btn-primary auth-submit" type="submit">Masuk ke Control Panel →</button><small id="adminLoginError" class="auth-error"></small></form></div>
@@ -338,8 +346,20 @@
     <div id="profileToast" class="profile-toast" aria-live="polite"></div>
     <div id="accountProfileView" hidden>
       <div class="profile-cover"><div class="profile-cover-glow"></div><div class="profile-cover-content"><div><span class="eyebrow" id="profileRole">SISWA • XI TKJ 1</span><h2 id="profileName">Akun</h2><p id="profileNisn">NISN: -</p></div><div class="profile-avatar-wrap"><img id="profileAvatarImg" alt="Foto profil" hidden><div id="profileAvatarFallback">XI</div></div></div></div>
-      <div class="profile-info-grid profile-info-compact"><div><small>Nama akun</small><b id="profileName2">-</b></div><div><small>Login</small><b id="profileLoginValue">NISN</b></div><div><small>Status</small><b>Aktif</b></div><div><small>Penyimpanan</small><b>Perangkat lokal</b></div></div>
+      <div class="profile-feature-grid" id="profileFeatureGrid">
+        <article><span class="profile-feature-icon">ROLE</span><div><b id="profileFeatureRole">Siswa</b><small id="profileFeatureRoleSub">XI TKJ 1</small></div></article>
+        <article><span class="profile-feature-icon">ID</span><div><b id="profileFeatureId">NISN</b><small id="profileFeatureIdSub">Identitas akun</small></div></article>
+        <article><span class="profile-feature-icon">STATUS</span><div><b id="profileFeatureStatus">Aktif</b><small>Sesi sedang berjalan</small></div></article>
+        <article><span class="profile-feature-icon">DATA</span><div><b id="profileFeatureData">Lokal</b><small>Profil tersimpan di perangkat</small></div></article>
+      </div>
+      <div class="profile-info-grid profile-info-compact">
+        <div><small>Nama akun</small><b id="profileName2">-</b></div>
+        <div><small id="profileLoginLabel">Login</small><b id="profileLoginValue">NISN</b></div>
+        <div><small>Peran</small><b id="profileRoleValue">Siswa</b></div>
+        <div><small>Status akun</small><b id="profileStatusValue">Aktif</b></div>
+      </div>
       <div class="profile-editor" id="profileEditor">
+        <div class="profile-editor-heading"><div><span class="eyebrow">PERSONAL DATA</span><h3>Edit Profile</h3></div><small id="profileEditorHint">Data profile dapat diubah setelah login.</small></div>
         <div class="profile-edit-grid">
           <label>Nama Profile<input id="profileNameInput" type="text" maxlength="60" placeholder="Nama profile"></label>
           <label>Username Profile<input id="profileUsernameInput" type="text" maxlength="30" placeholder="Username profile"></label>
@@ -457,7 +477,7 @@
     <div class="face-quick-tips">
       <span>☼ Cahaya cukup</span><span>◎ Wajah terlihat jelas</span><span>1× per hari</span>
     </div>
-    <p class="face-note"><span>🔒</span> Foto hanya digunakan sebagai bukti absensi kelas.</p>
+    <p class="face-note"><span>LOCK</span> Foto hanya digunakan sebagai bukti absensi kelas.</p>
   </div>
 </div>
 

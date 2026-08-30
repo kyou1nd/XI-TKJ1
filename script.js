@@ -410,13 +410,12 @@ function adminRender(tab='overview'){
   });
  }
  else if(tab==='face-attendance'){
-  const dateKey=localDateKey(), accounts=window.__CLASS_ACCOUNTS||[], local=getFaceAttendanceLocal(dateKey);
-  c.innerHTML=`<div class="face-premium-hero"><div><span class="eyebrow">LIVE ATTENDANCE • XI TKJ 1</span><h3>Cek Absensi <em>Foto Muka</em></h3><p>Monitor bukti absensi hari ini dengan tampilan yang lebih rapi, cepat, dan mudah dicek.</p></div><div class="face-premium-date"><span>HARI INI</span><b>${dateKey}</b></div></div>
-  <div class="face-admin-summary premium"><div><span class="summary-icon">✓</span><section><b>${Object.keys(local).length}</b><small>Sudah absen</small></section></div><div><span class="summary-icon">◌</span><section><b>${Math.max(0,accounts.length-Object.keys(local).length)}</b><small>Belum absen</small></section></div><div><span class="summary-icon">%</span><section><b>${accounts.length?Math.round(Object.keys(local).length/accounts.length*100):0}%</b><small>Kehadiran hari ini</small></section></div></div>
-  <div class="face-admin-grid premium"><section class="face-admin-card"><div class="admin-card-head premium"><div><span>LIVE GALLERY</span><h4>Foto Absensi Masuk</h4></div><button class="mini-btn" id="faceRefreshDrive">↻ <b>Refresh Drive</b></button></div><div id="faceAdminPhotos" class="face-admin-photos">${renderFaceAdminPhotos(local)}</div></section>
-  <section class="face-admin-card face-pending-card"><div class="admin-card-head premium"><div><span>NEEDS ACTION</span><h4>Belum Absen</h4><small class="pending-subtitle">Siswa yang masih perlu mengirim bukti foto hari ini</small></div><b class="face-count-badge">${Math.max(0,accounts.length-Object.keys(local).length)}</b></div><div class="face-unchecked-list">${accounts.filter(a=>!local[a.nisn]).map((a,i)=>`<div class="face-unchecked-item"><span class="face-unchecked-index">${String(i+1).padStart(2,'0')}</span><span class="face-unchecked-avatar">${escapeHTML((a.first||a.name||'S').charAt(0))}</span><div class="face-unchecked-info"><b>${escapeHTML(a.name)}</b><small><span class="pending-id-label">NISN</span>${escapeHTML(a.nisn||'Belum tersedia')}</small></div><span class="face-unchecked-status"><i></i>Menunggu</span></div>`).join('')||'<div class="face-empty"><span class="face-empty-icon">✓</span><b>Semua sudah absen</b><small>Seluruh siswa telah mengirim bukti foto hari ini.</small></div>'}</div></section></div>`;
-  c.querySelector('#faceRefreshDrive')?.addEventListener('click',()=>loadDriveFaceAttendance(dateKey,true));
-  if(!window.__faceDriveSkipNextLoad){ loadDriveFaceAttendance(dateKey,false); } else { window.__faceDriveSkipNextLoad=false; }
+  const dateKey=localDateKey(), accounts=window.__CLASS_ACCOUNTS||[], local=getFaceAttendanceLocal(dateKey), manual=getManualAttendanceLocal(dateKey);
+  c.innerHTML=`<div class="face-premium-hero"><div><span class="eyebrow">ATTENDANCE CENTER • XI TKJ 1</span><h3>Cek Absensi <em>Hari Ini</em></h3><p>Absensi manual H/I/A dan absensi foto muka sekarang tampil dalam satu daftar yang sinkron.</p></div><div class="face-premium-date"><span>HARI INI</span><b>${dateKey}</b></div></div>
+  <div class="face-admin-summary premium" id="attendanceSummaryCards"><div><span class="summary-icon">✓</span><section><b>0</b><small>Hadir</small></section></div><div><span class="summary-icon">I</span><section><b>0</b><small>Izin</small></section></div><div><span class="summary-icon">A</span><section><b>0</b><small>Alfa</small></section></div><div><span class="summary-icon">◌</span><section><b>0</b><small>Belum absen</small></section></div></div>
+  <section class="face-admin-card attendance-unified-card"><div class="admin-card-head premium"><div><span>SYNCED ATTENDANCE</span><h4>Rekap Absensi Siswa</h4><small class="pending-subtitle">Status H / I / A dari Admin Panel + bukti foto jika tersedia.</small></div><button class="mini-btn" id="faceRefreshDrive">↻ <b>Refresh</b></button></div><div id="attendanceUnifiedList" class="attendance-unified-list">${renderUnifiedAttendance(accounts,manual,local)}</div></section>`;
+  c.querySelector('#faceRefreshDrive')?.addEventListener('click',()=>refreshUnifiedAttendance(dateKey,true));
+  refreshUnifiedAttendance(dateKey,false);
  }
  else if(tab==='finance')c.innerHTML=`<h3>Kelola Kas Kelas</h3><p class="admin-help">Atur saldo, total pemasukan, dan total pengeluaran. Nilai disimpan lokal.</p><div class="admin-form-grid"><label>Saldo kas<input type="number" id="cashBal" value="${Number(cash.balance||0)}"></label><label>Total pemasukan<input type="number" id="cashInc" value="${Number(cash.income||0)}"></label><label>Total pengeluaran<input type="number" id="cashExp" value="${Number(cash.expense||0)}"></label><label>Catatan kas<input id="cashNote" value="${escapeHTML(cash.note||'Data kas kelas')}"></label></div><div class="admin-save-row"><button class="btn btn-primary" id="saveFinanceCfg">Simpan kas</button></div>`;
  else if(tab==='schedule')c.innerHTML=`<h3>Kelola Jadwal Pelajaran</h3><p class="admin-help">Format satu baris: waktu | mata pelajaran | guru | ruang. Gunakan satu blok per hari.</p><div class="admin-form-stack">${['senin','selasa','rabu','kamis','jumat'].map(day=>`<label>${day[0].toUpperCase()+day.slice(1)}<textarea id="sch_${day}">${escapeHTML((getSchedules()[day]||[]).map(x=>x.join(' | ')).join('\n'))}</textarea></label>`).join('')}</div><div class="admin-save-row"><button class="btn btn-primary" id="saveScheduleCfg">Simpan jadwal</button></div>`;
@@ -583,14 +582,37 @@ window.exportClassBackup=exportClassBackup;
  function closeAccount(){modal?.classList.remove('show');modal?.setAttribute('aria-hidden','true')}
  function updateMobileAccount(u){const label=document.getElementById('mobileAccountLabel');const link=document.getElementById('mobileAccountLink');const img=document.getElementById('mobileAccountAvatar'),fallback=document.getElementById('mobileAccountAvatarFallback');if(label)label.textContent=u?(u.name):'Account / Login';if(link)link.title=u?('Akun: '+u.name):'Account / Login';if(!u){if(img)img.hidden=true;if(fallback){fallback.hidden=false;fallback.textContent='A'}return}const photos=getPhotos();if(photos[u.key]){if(img){img.hidden=false;img.src=photos[u.key]}if(fallback)fallback.hidden=true}else{if(img)img.hidden=true;if(fallback){fallback.hidden=false;fallback.textContent=initials(u.name)}}}
  function getProfiles(){try{return JSON.parse(localStorage.getItem(profileKey)||'{}')}catch{return {}}}
- function getProfile(u){const p=getProfiles();return Object.assign({displayName:u?.name||'',username:u?.first||'',bio:'Suka mencoba hal baru dan membangun proyek digital sederhana.',interests:'Desain UI, jaringan, dan eksplorasi teknologi',skills:'Troubleshooting, konfigurasi jaringan, dan dasar coding',achievement:'Belum ada data',goal:'Mengembangkan kemampuan TKJ',favoriteSubject:'Teknik Komputer & Jaringan',motto:'',status:'Aktif'},p[u?.nisn]||{})}
- function saveProfile(u,data){const p=getProfiles();p[u.nisn]=data;localStorage.setItem(profileKey,JSON.stringify(p))}
+ function getProfile(u){const p=getProfiles();const key=u?.role==='admin'?'admin':u?.nisn;const defaults=u?.role==='admin'?{displayName:u?.name||'Admin XI TKJ 1',username:u?.username||'admin',bio:'Administrator website XI TKJ 1.',interests:'Pengelolaan website, data kelas, dan sistem informasi',skills:'Administrasi website, manajemen data, dan maintenance',achievement:'Mengelola sistem kelas',goal:'Menjaga website tetap rapi dan berjalan baik',favoriteSubject:'Administrasi Sistem',motto:'Kelola dengan rapi, layani dengan baik',status:'Aktif'}:{displayName:u?.name||'',username:u?.first||'',bio:'Suka mencoba hal baru dan membangun proyek digital sederhana.',interests:'Desain UI, jaringan, dan eksplorasi teknologi',skills:'Troubleshooting, konfigurasi jaringan, dan dasar coding',achievement:'Belum ada data',goal:'Mengembangkan kemampuan TKJ',favoriteSubject:'Teknik Komputer & Jaringan',motto:'',status:'Aktif'};return Object.assign(defaults,p[key]||{})}
+ function saveProfile(u,data){const p=getProfiles();p[u.role==='admin'?'admin':u.nisn]=data;localStorage.setItem(profileKey,JSON.stringify(p))}
  function syncStudentOnlySections(){
  const u=getSession();
  const hideStudent=!!u&&u.role==='student';
  ['calendar','events'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=hideStudent?'none':''});
 }
-function renderAccount(){const u=getSession();syncStudentOnlySections();syncAdminMenu();if(!u){guest.hidden=false;profile.hidden=true;updateMobileAccount(null);guestTop();return}const prof=u.role==='student'?getProfile(u):{};const displayName=prof.displayName||u.name;guest.hidden=true;profile.hidden=false;document.getElementById('profileName').textContent=displayName;document.getElementById('profileName2').textContent=displayName;document.getElementById('profileRole').textContent=u.role==='admin'?'ADMIN • CONTROL PANEL':'SISWA • XI TKJ 1';document.getElementById('profileNisn').textContent=u.role==='admin'?'Akun admin lokal':'NISN: '+u.nisn;document.getElementById('profileLoginValue').textContent=u.role==='admin'?'Username admin':(prof.username||u.first||'NISN');const photos=getPhotos(),img=document.getElementById('profileAvatarImg'),fallback=document.getElementById('profileAvatarFallback');if(photos[u.key]){img.hidden=false;fallback.hidden=true;img.src=photos[u.key]}else{img.hidden=true;fallback.hidden=false;fallback.textContent=initials(displayName)}['profileNameInput','profileUsernameInput','profileBioInput','profileInterestsInput','profileSkillsInput'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const map={profileNameInput:displayName,profileUsernameInput:prof.username||u.first||'',profileBioInput:prof.bio||'',profileInterestsInput:prof.interests||'',profileSkillsInput:prof.skills||''};el.value=map[id]});if(topPill){topPill.querySelector('b').textContent=displayName;topPill.title='Akun: '+displayName;const topImg=document.getElementById('topAvatarImg'),topFallback=document.getElementById('topAvatarFallback');if(photos[u.key]){topImg.hidden=false;topFallback.hidden=true;topImg.src=photos[u.key]}else{topImg.hidden=true;topFallback.hidden=false;topFallback.textContent=initials(displayName)}}updateMobileAccount(Object.assign({},u,{name:displayName}));renderStudents()}
+function renderAccount(){
+ const u=getSession();syncStudentOnlySections();syncAdminMenu();
+ if(!u){guest.hidden=false;profile.hidden=true;updateMobileAccount(null);guestTop();return}
+ const prof=getProfile(u),isAdmin=u.role==='admin';
+ const displayName=prof.displayName||u.name||'Akun';
+ guest.hidden=true;profile.hidden=false;
+ const setText=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val};
+ setText('profileName',displayName);setText('profileName2',displayName);
+ setText('profileRole',isAdmin?'ADMIN • CONTROL PANEL':'SISWA • XI TKJ 1');
+ setText('profileNisn',isAdmin?'Username: '+(prof.username||'admin'):'NISN: '+u.nisn);
+ setText('profileLoginValue',isAdmin?(prof.username||'admin'):(prof.username||u.first||'NISN'));
+ setText('profileLoginLabel',isAdmin?'Username':'Login');
+ setText('profileRoleValue',isAdmin?'Administrator':'Siswa');setText('profileStatusValue',prof.status||'Aktif');
+ setText('profileFeatureRole',isAdmin?'Administrator':'Siswa');setText('profileFeatureRoleSub',isAdmin?'Control Panel':'XI TKJ 1');
+ setText('profileFeatureId',isAdmin?(prof.username||'admin'):u.nisn);setText('profileFeatureIdSub',isAdmin?'Username admin':'NISN siswa');
+ setText('profileFeatureStatus',prof.status||'Aktif');setText('profileFeatureData','Lokal');
+ setText('profileEditorHint',isAdmin?'Edit data profil administrator setelah login.':'Edit data profil siswa setelah login.');
+ const photos=getPhotos(),img=document.getElementById('profileAvatarImg'),fallback=document.getElementById('profileAvatarFallback');
+ if(photos[u.key]){img.hidden=false;fallback.hidden=true;img.src=photos[u.key]}else{img.hidden=true;fallback.hidden=false;fallback.textContent=initials(displayName)}
+ const values={profileNameInput:displayName,profileUsernameInput:prof.username||u.first||'',profileBioInput:prof.bio||'',profileInterestsInput:prof.interests||'',profileSkillsInput:prof.skills||''};
+ Object.entries(values).forEach(([id,val])=>{const el=document.getElementById(id);if(el)el.value=val});
+ if(topPill){topPill.querySelector('b').textContent=displayName;topPill.title='Akun: '+displayName;const topImg=document.getElementById('topAvatarImg'),topFallback=document.getElementById('topAvatarFallback');if(photos[u.key]){topImg.hidden=false;topFallback.hidden=true;topImg.src=photos[u.key]}else{topImg.hidden=true;topFallback.hidden=false;topFallback.textContent=initials(displayName)}}
+ updateMobileAccount(Object.assign({},u,{name:displayName}));renderStudents()
+}
  function syncAccountBio(){const u=getSession();if(!u||u.role!=='student')return;const prof=getProfile(u);const bioEl=document.getElementById('accountBio'),input=document.getElementById('accountBioInput');if(bioEl)bioEl.textContent=prof.bio||'Belum ada bio.';if(input)input.value=prof.bio||'';}
  function guestTop(){syncAdminMenu();updateMobileAccount(null);if(topPill){topPill.querySelector('b').textContent='Account';topPill.title='Account / Login';const topImg=document.getElementById('topAvatarImg'),topFallback=document.getElementById('topAvatarFallback');if(topImg)topImg.hidden=true;if(topFallback){topFallback.hidden=false;topFallback.textContent='AC'}}}
  document.querySelectorAll('[data-open-account]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();mobileMenu?.classList.remove('show');openAccount()}));topPill?.addEventListener('click',openAccount);document.getElementById('accountModalClose')?.addEventListener('click',closeAccount);modal?.addEventListener('click',e=>{if(e.target===modal)closeAccount()});
@@ -598,11 +620,11 @@ function renderAccount(){const u=getSession();syncStudentOnlySections();syncAdmi
  document.getElementById('studentLoginForm')?.addEventListener('submit',e=>{e.preventDefault();const nisn=document.getElementById('studentUsername').value.trim();const pw=document.getElementById('studentPassword').value;const err=document.getElementById('studentLoginError');const u=ACCOUNTS.find(x=>x.nisn===nisn);const stored=getPasswords();if(!u){err.textContent='NISN tidak ditemukan di data XI TKJ 1.';return}if((stored[u.nisn]||u.defaultPassword)!==pw){err.textContent='Password salah.';return}err.textContent='';setSession({role:'student',key:u.nisn,name:u.name,nisn:u.nisn,first:u.first});document.getElementById('studentLoginForm').reset();renderAccount();closeAccount();welcomeToast('Welcome Di Website XI TKJ 1 '+u.name)});
  document.getElementById('adminLoginForm')?.addEventListener('submit',e=>{e.preventDefault();const un=document.getElementById('adminUsername').value.trim(),pw=document.getElementById('adminPassword').value,err=document.getElementById('adminLoginError');if(un!==ADMIN.username||pw!==ADMIN.password){err.textContent='Username atau password admin salah.';return}err.textContent='';setSession({role:'admin',key:'admin',name:ADMIN.name});document.getElementById('adminLoginForm').reset();renderAccount();closeAccount();welcomeToast('Welcome Di Website XI TKJ 1 '+ADMIN.name)});
  document.getElementById('accountLogout')?.addEventListener('click',()=>{sessionStorage.removeItem(sessionKey);syncAdminMenu();if(typeof syncFaceAttendanceMenu==='function')syncFaceAttendanceMenu();window.dispatchEvent(new CustomEvent('xi-session-changed'));renderAccount();guestTop();closeAccount();closeAdminPortal();toast('Sesi ditutup.')});document.getElementById('adminLogout')?.addEventListener('click',()=>{sessionStorage.removeItem(sessionKey);syncAdminMenu();if(typeof syncFaceAttendanceMenu==='function')syncFaceAttendanceMenu();window.dispatchEvent(new CustomEvent('xi-session-changed'));closeAdminPortal();renderAccount();guestTop();toast('Sesi admin ditutup.')});
- document.getElementById('saveAccountProfile')?.addEventListener('click',()=>{const u=getSession();if(!u||u.role!=='student')return toast('Login sebagai siswa untuk mengubah profil.');openProfileConfirm()});
+ document.getElementById('saveAccountProfile')?.addEventListener('click',()=>{const u=getSession();if(!u)return toast('Silakan login terlebih dahulu.');openProfileConfirm()});
  function openProfileConfirm(){const m=document.getElementById('profileConfirmModal');if(m){m.classList.add('show');m.setAttribute('aria-hidden','false')}}
  function closeProfileConfirm(){const m=document.getElementById('profileConfirmModal');if(m){m.classList.remove('show');m.setAttribute('aria-hidden','true')}}
  document.getElementById('profileConfirmNo')?.addEventListener('click',()=>{closeProfileConfirm();renderAccount();profileToast('Merubah Profile Dibatalkan.')});
- document.getElementById('profileConfirmYes')?.addEventListener('click',()=>{const u=getSession();closeProfileConfirm();if(!u||u.role!=='student')return;const profiles=getProfiles();const current=getProfile(u);const displayName=document.getElementById('profileNameInput')?.value.trim()||u.name;const username=document.getElementById('profileUsernameInput')?.value.trim()||u.first;profiles[u.nisn]=Object.assign({},current,{displayName,username,bio:document.getElementById('profileBioInput')?.value.trim()||'',interests:document.getElementById('profileInterestsInput')?.value.trim()||'',skills:document.getElementById('profileSkillsInput')?.value.trim()||'',motto:''});saveProfile(u,profiles[u.nisn]);const next=Object.assign({},u,{name:displayName,first:username});setSession(next);renderAccount();profileToast('Berhasil Merubah Data Account')});
+ document.getElementById('profileConfirmYes')?.addEventListener('click',()=>{const u=getSession();closeProfileConfirm();if(!u)return;const current=getProfile(u);const displayName=document.getElementById('profileNameInput')?.value.trim()||u.name;const username=document.getElementById('profileUsernameInput')?.value.trim()||(u.role==='admin'?'admin':u.first);const data=Object.assign({},current,{displayName,username,bio:document.getElementById('profileBioInput')?.value.trim()||'',interests:document.getElementById('profileInterestsInput')?.value.trim()||'',skills:document.getElementById('profileSkillsInput')?.value.trim()||''});saveProfile(u,data);const next=Object.assign({},u,{name:displayName});if(u.role==='student')next.first=username;else next.username=username;setSession(next);renderAccount();profileToast(u.role==='admin'?'Profil admin berhasil diperbarui.':'Profil siswa berhasil diperbarui.')});
  document.getElementById('profileConfirmModal')?.addEventListener('click',e=>{if(e.target.id==='profileConfirmModal')closeProfileConfirm()});
 
  document.getElementById('adminControlLink')?.addEventListener('click',e=>{e.preventDefault();mobileMenu?.classList.remove('show');const u=getSession();if(u?.role==='admin')openAdminPortal();else openAccount()});
@@ -1202,6 +1224,69 @@ async function loadDriveFaceAttendance(dateKey,force=false,checkNisn=''){
   if(document.getElementById('adminContent')&&document.querySelector('.admin-tab.active')?.dataset.admin==='face-attendance'){window.__faceDriveSkipNextLoad=true;adminRender('face-attendance')}
  }catch(e){/* Drive optional: local mode continues */ }
 }
+function formatAttendanceDateTime(date,time){
+ const d=String(date||'').split('-');
+ const ds=d.length===3?`${d[2]}.${d[1]}.${d[0]}`:String(date||'');
+ return `${ds}${time?' '+time:''}`.trim();
+}
+function attendanceStatusLabel(st){return st==='H'?'Hadir':st==='I'?'Izin':st==='A'?'Alfa':'Belum Absen'}
+function renderUnifiedAttendance(accounts,manual,photos){
+ const list=accounts.map(a=>{
+   const r=photos[a.nisn]||{};
+   const status=manual[a.nisn]||r.status||'';
+   const hasPhoto=!!(r.image||r.thumbnail||r.url);
+   const date=r.date||localDateKey();
+   const time=r.time||'';
+   const displayName=r.name||a.name||'Siswa';
+   const label=attendanceStatusLabel(status);
+   const when=formatAttendanceDateTime(date,time||'');
+   const initial=escapeHTML((a.first||displayName||'S').charAt(0));
+   if(hasPhoto){
+     const src=r.image||r.thumbnail||r.url;
+     return `<article class="attendance-unified-item has-photo"><span class="attendance-avatar"><img src="${escapeHTML(src)}" alt="Foto ${escapeHTML(displayName)}" loading="lazy"></span><div class="attendance-unified-main"><b>${escapeHTML(displayName)}</b><small>${escapeHTML(label)}${when?' • '+escapeHTML(when):''}</small><em>Bukti foto tersedia</em></div><span class="attendance-status-badge ${status.toLowerCase()||'pending'}">${escapeHTML(label)}</span></article>`;
+   }
+   if(status){
+     return `<article class="attendance-unified-item text-only"><span class="attendance-avatar fallback">${initial}</span><div class="attendance-unified-main"><b>${escapeHTML(displayName)}</b><small>${escapeHTML(label)}${when?' • '+escapeHTML(when):''}</small><em>Tidak ada foto — absensi manual oleh admin</em></div><span class="attendance-status-badge ${status.toLowerCase()}">${escapeHTML(label)}</span></article>`;
+   }
+   return `<article class="attendance-unified-item pending"><span class="attendance-avatar fallback">${initial}</span><div class="attendance-unified-main"><b>${escapeHTML(displayName)}</b><small>NISN: ${escapeHTML(a.nisn||'-')}</small><em>Belum ada absensi hari ini</em></div><span class="attendance-status-badge pending">Belum</span></article>`;
+ }).join('');
+ return list||'<div class="face-empty">Data siswa belum tersedia.</div>';
+}
+function updateUnifiedAttendanceSummary(accounts,manual,photos){
+ const counts={H:0,I:0,A:0,none:0};
+ accounts.forEach(a=>{const st=manual[a.nisn]||photos[a.nisn]?.status||'';if(counts[st]!==undefined)counts[st]++;else counts.none++});
+ const box=document.getElementById('attendanceSummaryCards');
+ if(box)box.innerHTML=`<div><span class="summary-icon">✓</span><section><b>${counts.H}</b><small>Hadir</small></section></div><div><span class="summary-icon">I</span><section><b>${counts.I}</b><small>Izin</small></section></div><div><span class="summary-icon">A</span><section><b>${counts.A}</b><small>Alfa</small></section></div><div><span class="summary-icon">◌</span><section><b>${counts.none}</b><small>Belum absen</small></section></div>`;
+}
+function refreshUnifiedAttendance(dateKey,force=false){
+ const local=getFaceAttendanceLocal(dateKey),manual=getManualAttendanceLocal(dateKey),accounts=window.__CLASS_ACCOUNTS||[];
+ updateUnifiedAttendanceSummary(accounts,manual,local);
+ const list=document.getElementById('attendanceUnifiedList');if(list)list.innerHTML=renderUnifiedAttendance(accounts,manual,local);
+ if(!DRIVE_UPLOAD_URL)return;
+ getAttendanceSummaryJsonp(dateKey).then(res=>{
+   if(!res||!res.ok)return;
+   const mergedManual=Object.assign({},manual,res.manual||{});
+   const mergedPhotos=Object.assign({},local);
+   (res.face||[]).forEach(r=>{if(r.nisn)mergedPhotos[r.nisn]=Object.assign({},mergedPhotos[r.nisn]||{},r,{source:'drive',thumbnail:r.thumbnail||r.url})});
+   localStorage.setItem('xi-attendance-'+dateKey,JSON.stringify(mergedManual));
+   saveFaceAttendanceLocal(dateKey,mergedPhotos);
+   updateUnifiedAttendanceSummary(accounts,mergedManual,mergedPhotos);
+   if(list)list.innerHTML=renderUnifiedAttendance(accounts,mergedManual,mergedPhotos);
+ }).catch(()=>{});
+}
+function getAttendanceSummaryJsonp(dateKey){
+ return new Promise((resolve,reject)=>{
+   if(!DRIVE_UPLOAD_URL)return reject(new Error('Backend belum diatur'));
+   const cb='xiAttendanceSummary_'+Date.now()+'_'+Math.floor(Math.random()*10000),script=document.createElement('script');
+   const timer=setTimeout(()=>{cleanup();reject(new Error('timeout'))},10000);
+   function cleanup(){clearTimeout(timer);delete window[cb];script.remove()}
+   window[cb]=data=>{cleanup();resolve(data)};
+   script.onerror=()=>{cleanup();reject(new Error('summary error'))};
+   script.src=DRIVE_UPLOAD_URL+(DRIVE_UPLOAD_URL.includes('?')?'&':'?')+'action=attendanceSummary&date='+encodeURIComponent(dateKey)+'&callback='+encodeURIComponent(cb);
+   document.body.appendChild(script);
+ });
+}
+
 function renderFaceAdminPhotos(data){
  const entries=Object.values(data||{});if(!entries.length)return '<div class="face-empty">Belum ada foto absensi yang masuk hari ini.</div>';
  const accounts=window.__CLASS_ACCOUNTS||[];
