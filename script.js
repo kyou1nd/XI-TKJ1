@@ -374,19 +374,22 @@ function adminRender(tab='overview'){
   ${['H','I','A'].map(v=>`<td><button class="attendance-btn ${st===v?v.toLowerCase()+' selected':''}" data-attendance="${escapeHTML(a.nisn)}" data-value="${v}" title="${v==='H'?'Hadir':v==='I'?'Izin':'Alfa'}">${v}</button></td>`).join('')}</tr>`}).join('')}
   </tbody></table></div><div class="attendance-bottom-actions"><button class="btn btn-primary" id="attendanceAllPresent">✓ Hadir Semua</button></div>`}`;
   c.querySelectorAll('[data-attendance]').forEach(btn=>btn.addEventListener('click',()=>{
-    const nisn=btn.dataset.attendance, value=btn.dataset.value;
+    const nisn=btn.dataset.attendance, value=btn.dataset.value, account=accounts.find(a=>a.nisn===nisn);
     data[nisn]=data[nisn]===value?'':value;
     localStorage.setItem('xi-attendance-'+dateKey,JSON.stringify(data));
+    if(data[nisn]&&account) syncManualAttendanceToSheets({date:dateKey,nisn:account.nisn,name:account.name,status:data[nisn]});
     adminRender('attendance');
     renderStudents();
-    toast(data[nisn]?`Absensi ${data[nisn]==='H'?'Hadir':data[nisn]==='I'?'Izin':'Alfa'} disimpan`:'Absensi dibatalkan');
+    toast(data[nisn]?`Absensi ${data[nisn]==='H'?'Hadir':data[nisn]==='I'?'Izin':'Alfa'} disimpan dan dikirim ke Google Sheets`:'Absensi dibatalkan di perangkat');
   }));
   c.querySelector('#attendanceAllPresent')?.addEventListener('click',()=>{
+    const records=accounts.map(a=>({date:dateKey,nisn:a.nisn,name:a.name,status:'H'}));
     accounts.forEach(a=>{data[a.nisn]='H'});
     localStorage.setItem('xi-attendance-'+dateKey,JSON.stringify(data));
+    syncManualAttendanceBatchToSheets(records);
     adminRender('attendance');
     renderStudents();
-    toast('Semua siswa ditandai Hadir');
+    toast('Semua siswa ditandai Hadir dan dikirim ke Google Sheets');
   });
  }
  else if(tab==='face-attendance'){
@@ -909,17 +912,45 @@ function showFacePreview(data,meta){
  const prev=document.getElementById('facePreviewWrap'),img=document.getElementById('facePreview'),m=document.getElementById('facePreviewMeta'),actions=document.getElementById('faceSubmitActions');
  if(img)img.src=data;if(m)m.textContent=meta||'';if(prev){prev.hidden=false;prev.dataset.previewSrc=data||'';prev.dataset.previewMeta=meta||''}if(actions)actions.hidden=false;
 }
-function submitFaceAttendance(){
+function postAttendanceForm(url,fields){
+ if(!url)return false;
+ const iframe=document.createElement('iframe');iframe.name='attendanceSync_'+Date.now();iframe.style.display='none';document.body.appendChild(iframe);
+ const form=document.createElement('form');form.method='POST';form.action=url;form.target=iframe.name;form.enctype='application/x-www-form-urlencoded';form.style.display='none';
+ Object.entries(fields).forEach(([k,v])=>{const input=document.createElement('textarea');input.name=k;input.value=String(v??'');form.appendChild(input)});
+ document.body.appendChild(form);form.submit();setTimeout(()=>{form.remove();iframe.remove()},20000);return true;
+}
+function syncManualAttendanceToSheets(record){
+ if(!window.MANUAL_ATTENDANCE_URL)return;
+ postAttendanceForm(window.MANUAL_ATTENDANCE_URL,{action:'saveManualAttendance',...record});
+}
+function syncManualAttendanceBatchToSheets(records){
+ if(!window.MANUAL_ATTENDANCE_URL)return;
+ postAttendanceForm(window.MANUAL_ATTENDANCE_URL,{action:'saveManualAttendanceBatch',records:JSON.stringify(records)});
+}
+function getLiveFaceLocation(){
+ return new Promise((resolve,reject)=>{
+  if(!navigator.geolocation)return reject(new Error('Browser tidak mendukung lokasi.'));
+  navigator.geolocation.getCurrentPosition(pos=>resolve({
+   latitude:pos.coords.latitude,longitude:pos.coords.longitude,
+   accuracy:Math.round(pos.coords.accuracy||0)
+  }),err=>reject(err),{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+ });
+}
+async function submitFaceAttendance(){
  const u=faceSession();if(!u||u.role!=='student')return toast('Login sebagai siswa terlebih dahulu.');
  if(!faceCapturedData)return toast('Ambil foto wajah terlebih dahulu.');
  const dateKey=localDateKey(),now=new Date(),data=getFaceAttendanceLocal(dateKey);
  if(data[u.nisn])return toast('Kamu sudah absen foto hari ini.');
- const record={nisn:u.nisn,name:u.name,date:dateKey,time:now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}),image:faceCapturedData,source:DRIVE_UPLOAD_URL?'local+drive':'local'};
+ setFaceStatus('Mengambil lokasi real-time... izinkan akses lokasi untuk melanjutkan.','ready');
+ let loc;
+ try{loc=await getLiveFaceLocation();}catch(e){setFaceStatus('Lokasi diperlukan untuk absensi foto. Aktifkan GPS dan izinkan lokasi, lalu coba lagi.','error');return toast('Lokasi belum diizinkan.');}
+ const mapsUrl='https://www.google.com/maps?q='+encodeURIComponent(loc.latitude+','+loc.longitude);
+ const record={nisn:u.nisn,name:u.name,date:dateKey,time:now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}),image:faceCapturedData,source:DRIVE_UPLOAD_URL?'local+drive':'local',latitude:loc.latitude,longitude:loc.longitude,accuracy:loc.accuracy,mapsUrl:mapsUrl};
  data[u.nisn]=record;saveFaceAttendanceLocal(dateKey,data);
  if(DRIVE_UPLOAD_URL)uploadFaceToDrive(record);
- setFaceStatus(DRIVE_UPLOAD_URL?'Absensi tersimpan dan dikirim ke Google Drive.':'Absensi tersimpan di perangkat ini. Google Drive belum dikonfigurasi.','success');
+ setFaceStatus('Absensi tersimpan. Lokasi real-time akurasi ±'+loc.accuracy+' meter ikut dikirim.','success');
  document.getElementById('faceSubmitActions').hidden=true;document.getElementById('faceCameraCapture').disabled=true;
- toast('Absensi foto berhasil disimpan');
+ toast('Absensi foto + lokasi berhasil dikirim');
 }
 function uploadFaceToDrive(record){
  try{
@@ -931,7 +962,7 @@ function uploadFaceToDrive(record){
   form.enctype='application/x-www-form-urlencoded';
   form.acceptCharset='UTF-8';
   form.style.display='none';
-  const fields={action:'uploadFaceAttendance',date:record.date,time:record.time,nisn:record.nisn,name:record.name,mimeType:'image/jpeg',imageData:record.image.split(',')[1]};
+  const fields={action:'uploadFaceAttendance',date:record.date,time:record.time,nisn:record.nisn,name:record.name,mimeType:'image/jpeg',imageData:record.image.split(',')[1],latitude:record.latitude,longitude:record.longitude,accuracy:record.accuracy,mapsUrl:record.mapsUrl};
   Object.entries(fields).forEach(([k,v])=>{
     const input=document.createElement('textarea');
     input.name=k;
@@ -976,8 +1007,9 @@ function renderFaceAdminPhotos(data){
  return entries.sort((a,b)=>(a.time||'').localeCompare(b.time||'')).map(r=>{
    const full=r.name||accounts.find(x=>x.nisn===r.nisn)?.name||'Siswa';
    const src=r.image||r.thumbnail||r.url||'';
-   const meta=`${r.time||'Waktu tidak tersedia'} • ${r.source==='drive'?'Google Drive':'Perangkat'}`;
-   return `<button type="button" class="face-admin-photo" data-src="${escapeHTML(src)}" data-meta="${escapeHTML(full+' • '+meta)}"><span class="face-admin-photo-image"><img src="${escapeHTML(src)}" alt="Foto absensi ${escapeHTML(full)}" loading="lazy"></span><span class="face-admin-photo-info"><span class="face-photo-status">ABSEN FOTO</span><b>${escapeHTML(nick(r))}</b><small>${escapeHTML(full)}</small><strong class="face-photo-time">${escapeHTML(r.time||'Waktu tidak tersedia')}</strong><em>Ketuk untuk buka foto</em></span><span class="face-photo-arrow">↗</span></button>`;
+   const locationText=r.mapsUrl?' • 📍 Lokasi tersimpan':'';
+    const meta=`${r.time||'Waktu tidak tersedia'} • ${r.source==='drive'?'Google Drive':'Perangkat'}${locationText}`;
+   return `<button type="button" class="face-admin-photo" data-src="${escapeHTML(src)}" data-meta="${escapeHTML(full+' • '+meta)}"><span class="face-admin-photo-image"><img src="${escapeHTML(src)}" alt="Foto absensi ${escapeHTML(full)}" loading="lazy"></span><span class="face-admin-photo-info"><span class="face-photo-status">ABSEN FOTO</span><b>${escapeHTML(nick(r))}</b><small>${escapeHTML(full)}</small><strong class="face-photo-time">${escapeHTML(r.time||'Waktu tidak tersedia')}</strong><em>Ketuk untuk buka foto${r.mapsUrl?' • Lokasi tersedia':''}</em></span><span class="face-photo-arrow">↗</span></button>`;
  }).join('');
 }
 
