@@ -74,8 +74,40 @@ function saveFace_(p){
   return json_({ok:true,id:file.getId(),url:file.getUrl()});
 }
 
+
+function attendanceStatus_(p){
+  const date=clean_(p.date), nisn=clean_(p.nisn);
+  let manualStatus='', faceDone=false, record=null;
+  if(date&&nisn){
+    const ss=ss_();
+    const msh=ss.getSheetByName(MANUAL_SHEET);
+    if(msh&&msh.getLastRow()>1){
+      const rows=msh.getRange(2,1,msh.getLastRow()-1,7).getValues();
+      for(let i=rows.length-1;i>=0;i--){
+        if(String(rows[i][1])===date&&String(rows[i][2])===nisn){manualStatus=String(rows[i][5]||'');break;}
+      }
+    }
+    const fsh=ss.getSheetByName(FACE_SHEET);
+    if(fsh&&fsh.getLastRow()>1){
+      const rows=fsh.getRange(2,1,fsh.getLastRow()-1,11).getValues();
+      for(let i=rows.length-1;i>=0;i--){
+        if(String(rows[i][1])===date&&String(rows[i][3])===nisn){
+          faceDone=true;
+          record={date:String(rows[i][1]||''),time:String(rows[i][2]||''),nisn:String(rows[i][3]||''),name:String(rows[i][4]||''),latitude:String(rows[i][5]||''),longitude:String(rows[i][6]||''),accuracy:String(rows[i][7]||''),mapsUrl:String(rows[i][8]||''),locationText:String(rows[i][9]||''),url:String(rows[i][10]||'')};
+          break;
+        }
+      }
+    }
+  }
+  const obj={ok:true,date,nisn,manualStatus,faceDone,locked:manualStatus==='H'||faceDone,record};
+  const cb=p.callback;
+  if(cb&&/^[A-Za-z_$][0-9A-Za-z_$]*$/.test(cb)) return ContentService.createTextOutput(cb+'('+JSON.stringify(obj)+');').setMimeType(ContentService.MimeType.JAVASCRIPT);
+  return json_(obj);
+}
+
 function doGet(e){
   const p=e.parameter||{};
+  if(p.action==='attendanceStatus') return attendanceStatus_(p);
   if(p.action==='listFaceAttendance'){
     const date=clean_(p.date), records=[], files=folder_().getFiles();
     while(files.hasNext()){
