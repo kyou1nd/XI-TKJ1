@@ -396,7 +396,7 @@ function adminRender(tab='overview'){
     localStorage.setItem('xi-attendance-'+dateKey,JSON.stringify(data));
     if(account){
       const syncPromise=data[nisn]
-        ? syncManualAttendanceToSheets({date:dateKey,nisn:account.nisn,name:account.name,status:data[nisn]})
+        ? syncManualAttendanceToSheets({date:dateKey,nisn:account.nisn,name:account.name,status:data[nisn],kelas:'XI TKJ 1'})
         : attendanceJsonp('deleteManualAttendance',{date:dateKey,nisn:account.nisn});
       syncPromise
         .then(()=>toast(data[nisn]?`Absensi ${data[nisn]==='H'?'Hadir':data[nisn]==='I'?'Izin':'Alfa'} tersimpan di Google Sheets`:'Absensi dibatalkan dan sinkron ke Google Sheets'))
@@ -406,7 +406,7 @@ function adminRender(tab='overview'){
     renderStudents();
   }));
   c.querySelector('#attendanceAllPresent')?.addEventListener('click',()=>{
-    const records=accounts.map(a=>({date:dateKey,nisn:a.nisn,name:a.name,status:'H'}));
+    const records=accounts.map(a=>({date:dateKey,nisn:a.nisn,name:a.name,status:'H',kelas:'XI TKJ 1'}));
     accounts.forEach(a=>{data[a.nisn]='H'});
     localStorage.setItem('xi-attendance-'+dateKey,JSON.stringify(data));
     syncManualAttendanceBatchToSheets(records)
@@ -1112,14 +1112,19 @@ function attendanceJsonp(action,params={}){
  return new Promise((resolve,reject)=>{
   const url=String(window.MANUAL_ATTENDANCE_URL||window.DRIVE_UPLOAD_URL||'').trim();
   if(!url)return reject(new Error('URL Apps Script kosong'));
-  const cb='xiAttendanceWrite_'+Date.now()+'_'+Math.floor(Math.random()*100000),script=document.createElement('script');
-  const query=new URLSearchParams({action,callback:cb,...Object.fromEntries(Object.entries(params).map(([k,v])=>[k,String(v??'')]))});
-  const timer=setTimeout(()=>{cleanup();reject(new Error('Apps Script timeout'))},12000);
-  function cleanup(){clearTimeout(timer);delete window[cb];script.remove()}
-  window[cb]=data=>{cleanup();data?.ok?resolve(data):reject(new Error(data?.error||'Gagal menyimpan ke Spreadsheet'))};
-  script.onerror=()=>{cleanup();reject(new Error('Apps Script tidak dapat dihubungi'))};
-  script.src=url+(url.includes('?')?'&':'?')+query.toString();
-  document.body.appendChild(script);
+  const cb='xiAttendanceWrite_'+Date.now()+'_'+Math.floor(Math.random()*1000000);
+  const script=document.createElement('script');
+  const query=new URLSearchParams();
+  query.set('action',action); query.set('callback',cb); query.set('_ts',String(Date.now()));
+  Object.entries(params).forEach(([k,v])=>query.set(k,String(v??'')));
+  let finished=false;
+  let timer;
+  const cleanup=()=>{if(finished)return;finished=true;clearTimeout(timer);try{delete window[cb]}catch(_){window[cb]=undefined}script.remove()};
+  timer=setTimeout(()=>{cleanup();reject(new Error('Apps Script tidak merespons. Pastikan URL /exec benar dan deployment Web App dapat diakses oleh Anyone.'))},15000);
+  window[cb]=data=>{if(finished)return;if(data&&data.ok){cleanup();resolve(data)}else{const msg=data&&data.error?data.error:'Gagal menyimpan ke Google Sheets';cleanup();reject(new Error(msg))}};
+  script.onerror=()=>{cleanup();reject(new Error('Apps Script tidak dapat diakses. Cek deployment Web App dan URL /exec.'))};
+  script.async=true; script.src=url+(url.includes('?')?'&':'?')+query.toString();
+  (document.head||document.body).appendChild(script);
  });
 }
 function postAttendanceForm(url,fields){
