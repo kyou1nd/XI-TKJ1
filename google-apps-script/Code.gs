@@ -105,8 +105,31 @@ function attendanceStatus_(p){
   return json_(obj);
 }
 
+function attendanceSummary_(p){
+  const date=clean_(p.date);
+  if(!date) return json_({ok:false,error:'Tanggal tidak ada.'});
+  const ss=ss_();
+  const manualSheet=sheet_(MANUAL_SHEET,['Timestamp','Tanggal','NISN','Nama','Kelas','Status','Keterangan']);
+  const faceSheet=sheet_(FACE_SHEET,['Timestamp','Tanggal','Waktu','NISN','Nama','Latitude','Longitude','Akurasi (meter)','Google Maps','Lokasi Alamat','File Drive']);
+  const manual={};
+  if(manualSheet.getLastRow()>1){
+    const rows=manualSheet.getRange(2,1,manualSheet.getLastRow()-1,7).getValues();
+    rows.forEach(r=>{if(String(r[1])===date&&r[2]) manual[String(r[2])]={date:String(r[1]),nisn:String(r[2]),name:String(r[3]||''),status:String(r[5]||''),keterangan:String(r[6]||''),timestamp:r[0] instanceof Date?r[0].toISOString():String(r[0]||'')};});
+  }
+  const face=[];
+  if(faceSheet.getLastRow()>1){
+    const rows=faceSheet.getRange(2,1,faceSheet.getLastRow()-1,11).getValues();
+    rows.forEach(r=>{if(String(r[1])===date&&r[3]) face.push({date:String(r[1]),time:String(r[2]||''),nisn:String(r[3]),name:String(r[4]||''),latitude:String(r[5]||''),longitude:String(r[6]||''),accuracy:String(r[7]||''),mapsUrl:String(r[8]||''),locationText:String(r[9]||''),url:String(r[10]||'')});});
+  }
+  const obj={ok:true,date,manual,face};
+  const cb=p.callback;
+  if(cb&&/^[A-Za-z_$][0-9A-Za-z_$]*$/.test(cb)) return ContentService.createTextOutput(cb+'('+JSON.stringify(obj)+');').setMimeType(ContentService.MimeType.JAVASCRIPT);
+  return json_(obj);
+}
+
 function doGet(e){
   const p=e.parameter||{};
+  if(p.action==='attendanceSummary') return attendanceSummary_(p);
   if(p.action==='attendanceStatus') return attendanceStatus_(p);
   if(p.action==='listFaceAttendance'){
     const date=clean_(p.date), records=[], files=folder_().getFiles();
