@@ -62,12 +62,12 @@ function saveFace_(p){
     const bytes=Utilities.base64Decode(String(p.imageData).replace(/^data:image\/\w+;base64,/,'')); 
     file=fldr.createFile(Utilities.newBlob(bytes,'image/jpeg','XI_TKJ1_FACE_'+date+'_'+time+'_'+clean_(name||'Siswa')+'.jpg'));
   }
-  const meta={type:'face-attendance',date,nisn,name,time,latitude:String(p.latitude||''),longitude:String(p.longitude||''),accuracy:String(p.accuracy||''),mapsUrl:String(p.mapsUrl||'')};
+  const meta={type:'face-attendance',date,nisn,name,time,latitude:String(p.latitude||''),longitude:String(p.longitude||''),accuracy:String(p.accuracy||''),mapsUrl:String(p.mapsUrl||''),locationText:String(p.locationText||p.address||'')};
   file.setDescription(JSON.stringify(meta));
 
-  const sh=sheet_(FACE_SHEET,['Timestamp','Tanggal','Waktu','NISN','Nama','Latitude','Longitude','Akurasi (meter)','Google Maps','File Drive']);
+  const sh=sheet_(FACE_SHEET,['Timestamp','Tanggal','Waktu','NISN','Nama','Latitude','Longitude','Akurasi (meter)','Google Maps','Lokasi Alamat','File Drive']);
   const rows=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,11).getValues():[];
-  const row=[new Date(),date,time,nisn,name,meta.latitude,meta.longitude,meta.accuracy,meta.mapsUrl,file.getUrl()];
+  const row=[new Date(),date,time,nisn,name,meta.latitude,meta.longitude,meta.accuracy,meta.mapsUrl,meta.locationText,file.getUrl()];
   let updated=false;
   rows.forEach((r,i)=>{ if(String(r[1])===date&&String(r[3])===nisn){ sh.getRange(i+2,1,1,11).setValues([row]); updated=true; }});
   if(!updated) sh.appendRow(row);
@@ -80,7 +80,7 @@ function doGet(e){
     const date=clean_(p.date), records=[], files=folder_().getFiles();
     while(files.hasNext()){
       const f=files.next(), d=f.getDescription()||'';
-      try{const m=JSON.parse(d);if(m.type==='face-attendance'&&(!date||m.date===date)) records.push({nisn:m.nisn,name:m.name,time:m.time,date:m.date,latitude:m.latitude||'',longitude:m.longitude||'',accuracy:m.accuracy||'',mapsUrl:m.mapsUrl||'',id:f.getId(),url:f.getUrl(),thumbnail:'https://drive.google.com/thumbnail?id='+encodeURIComponent(f.getId())+'&sz=w700'});}catch(_){}
+      try{const m=JSON.parse(d);if(m.type==='face-attendance'&&(!date||m.date===date)) records.push({nisn:m.nisn,name:m.name,time:m.time,date:m.date,latitude:m.latitude||'',longitude:m.longitude||'',accuracy:m.accuracy||'',mapsUrl:m.mapsUrl||'',locationText:m.locationText||'',id:f.getId(),url:f.getUrl(),thumbnail:'https://drive.google.com/thumbnail?id='+encodeURIComponent(f.getId())+'&sz=w700'});}catch(_){}
     }
     records.sort((a,b)=>(a.time||'').localeCompare(b.time||''));
     const obj={ok:true,records}, cb=p.callback;
