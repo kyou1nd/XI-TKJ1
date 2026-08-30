@@ -942,21 +942,38 @@ function addAttendanceWatermark(dataUrl,record){
   img.src=dataUrl;
  });
 }
+function showFaceAttendanceThanks(record={}){
+ stopFaceCamera();
+ const box=document.querySelector('#faceAttendanceModal .face-attendance-box');
+ const thanks=document.getElementById('faceAttendanceThanks');
+ const meta=document.getElementById('faceAttendanceThanksMeta');
+ if(!thanks)return;
+ if(box)box.classList.add('attendance-done');
+ thanks.hidden=false;
+ if(meta)meta.textContent=record.time?('Absensi hari ini sudah tercatat pada '+record.time+'.'):'Absensi hari ini sudah tercatat.';
+}
+function hideFaceAttendanceThanks(){
+ const box=document.querySelector('#faceAttendanceModal .face-attendance-box');
+ const thanks=document.getElementById('faceAttendanceThanks');
+ if(box)box.classList.remove('attendance-done');
+ if(thanks)thanks.hidden=true;
+}
 function openFaceAttendance(){
  const u=faceSession();
  if(!u||u.role!=='student'){toast('Login sebagai siswa untuk menggunakan Absen Foto Muka.');return}
  const modal=document.getElementById('faceAttendanceModal');if(!modal)return;
  modal.classList.add('show');modal.setAttribute('aria-hidden','false');resetFaceAttendanceUI();
- setTimeout(()=>startFaceCamera(),180);
  const local=getFaceAttendanceLocal(localDateKey());
- if(local[u.nisn]){setFaceStatus('Kamu sudah mengirim foto absensi hari ini pada '+(local[u.nisn].time||'hari ini')+'.','success');showFacePreview(local[u.nisn].image,local[u.nisn].time||'Tersimpan lokal');return}
- if(DRIVE_UPLOAD_URL) loadDriveFaceAttendance(localDateKey(),false,u.nisn);
+ if(local[u.nisn]){showFaceAttendanceThanks(local[u.nisn]);return}
+ if(DRIVE_UPLOAD_URL){loadDriveFaceAttendance(localDateKey(),false,u.nisn);setTimeout(()=>{const d=getFaceAttendanceLocal(localDateKey());if(!d[u.nisn])startFaceCamera()},450);}
+ else setTimeout(()=>startFaceCamera(),120);
 }
 function closeFaceAttendance(){
  const modal=document.getElementById('faceAttendanceModal');modal?.classList.remove('show');modal?.setAttribute('aria-hidden','true');stopFaceCamera();
 }
 let faceStream=null,faceCapturedData=null;
 function resetFaceAttendanceUI(){
+ hideFaceAttendanceThanks();
  stopFaceCamera();faceCapturedData=null;
  const v=document.getElementById('faceCameraVideo'),ph=document.getElementById('faceCameraPlaceholder'),prev=document.getElementById('facePreviewWrap'),actions=document.getElementById('faceSubmitActions'),cap=document.getElementById('faceCameraCapture'),status=document.getElementById('faceCameraStatus');
  if(v){v.hidden=false;v.srcObject=null} if(ph)ph.style.display='grid';if(prev)prev.hidden=true;if(actions)actions.hidden=true;if(cap)cap.disabled=true;
@@ -1067,6 +1084,7 @@ async function submitFaceAttendance(){
  if(DRIVE_UPLOAD_URL)uploadFaceToDrive(record);
  setFaceStatus('Absensi tersimpan. Lokasi real-time akurasi ±'+loc.accuracy+' meter ikut dikirim.','success');
  document.getElementById('faceSubmitActions').hidden=true;document.getElementById('faceCameraCapture').disabled=true;
+ showFaceAttendanceThanks(record);
  toast('Absensi foto + lokasi berhasil dikirim');
 }
 function uploadFaceToDrive(record){
@@ -1113,7 +1131,7 @@ async function loadDriveFaceAttendance(dateKey,force=false,checkNisn=''){
   const local=getFaceAttendanceLocal(dateKey),accounts=window.__CLASS_ACCOUNTS||[];
   res.records.forEach(r=>{if(!r.nisn)return;const preview=r.thumbnail||('https://drive.google.com/thumbnail?id='+encodeURIComponent(r.id||'')+'&sz=w1600')||r.url||local[r.nisn]?.image;local[r.nisn]=Object.assign({},local[r.nisn]||{},r,{source:'drive',image:preview})});
   saveFaceAttendanceLocal(dateKey,local);
-  if(checkNisn&&local[checkNisn]){setFaceStatus('Kamu sudah tercatat absen foto hari ini di Google Drive.','success');showFacePreview(local[checkNisn].image,local[checkNisn].time||'Google Drive');document.getElementById('faceSubmitActions').hidden=true}
+  if(checkNisn&&local[checkNisn]){showFaceAttendanceThanks(local[checkNisn]);}
   if(document.getElementById('adminContent')&&document.querySelector('.admin-tab.active')?.dataset.admin==='face-attendance'){window.__faceDriveSkipNextLoad=true;adminRender('face-attendance')}
  }catch(e){/* Drive optional: local mode continues */ }
 }
@@ -1139,6 +1157,7 @@ window.addEventListener('xi-session-changed',syncFaceAttendanceMenu);
 document.addEventListener('DOMContentLoaded',syncFaceAttendanceMenu);
 document.getElementById('faceAttendanceLink')?.addEventListener('click',e=>{e.preventDefault();document.getElementById('mobileMenu')?.classList.remove('show');openFaceAttendance()});
 document.getElementById('faceAttendanceClose')?.addEventListener('click',closeFaceAttendance);
+document.getElementById('faceAttendanceThanksClose')?.addEventListener('click',closeFaceAttendance);
 document.getElementById('faceAttendanceModal')?.addEventListener('click',e=>{if(e.target.id==='faceAttendanceModal')closeFaceAttendance()});
 document.getElementById('faceCameraStart')?.addEventListener('click',startFaceCamera);
 document.getElementById('faceCameraCapture')?.addEventListener('click',captureFace);

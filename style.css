@@ -837,3 +837,15 @@ body.dark .crop-square{border-color:rgba(255,255,255,.8)}
 .face-location-btn{margin:10px 12px 12px;width:calc(100% - 24px);border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:10px 12px;background:rgba(255,255,255,.06);color:inherit;font-weight:800;cursor:pointer}
 .face-location-btn:active{transform:scale(.98)}
 .face-admin-photo-info em{display:block;max-height:2.8em;overflow:hidden;line-height:1.35;font-style:normal}
+
+/* Tampilan setelah siswa sudah absen hari ini */
+.face-attendance-box.attendance-done > :not(.modal-close):not(.face-attendance-thanks){display:none!important}
+.face-attendance-thanks{min-height:470px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:48px 24px;animation:faceThanksIn .35s ease}
+.face-attendance-thanks[hidden]{display:none!important}
+.face-thanks-mark{width:82px;height:82px;display:grid;place-items:center;border-radius:28px;margin-bottom:24px;background:linear-gradient(135deg,#5365ff,#8b5cf6);color:#fff;font-size:40px;font-weight:900;box-shadow:0 18px 40px rgba(83,101,255,.3)}
+.face-attendance-thanks .eyebrow{color:var(--primary);font-size:9px;font-weight:900;letter-spacing:.15em}
+.face-attendance-thanks h3{margin:12px 0 10px;font-size:34px;line-height:1.08;letter-spacing:-.04em;color:var(--text)}
+.face-attendance-thanks p{margin:0;color:var(--muted);font-size:15px;font-weight:700}.face-attendance-thanks small{margin-top:12px;color:#8f97ad;font-size:10px}
+.face-thanks-close{margin-top:28px;border:0;border-radius:14px;padding:13px 34px;background:linear-gradient(135deg,#5365ff,#8b5cf6);color:#fff;font:inherit;font-weight:800;cursor:pointer;box-shadow:0 10px 28px rgba(83,101,255,.25)}
+@keyframes faceThanksIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+@media(max-width:700px){.face-attendance-thanks{min-height:70vh;padding:36px 18px}.face-attendance-thanks h3{font-size:30px}.face-thanks-mark{width:74px;height:74px;border-radius:24px;font-size:36px}}
