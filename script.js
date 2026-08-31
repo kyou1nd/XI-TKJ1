@@ -384,7 +384,7 @@ function adminRender(tab='overview'){
   const accounts=window.__CLASS_ACCOUNTS||[];
   let data={};
   try{data=JSON.parse(localStorage.getItem('xi-attendance-'+dateKey)||'{}')}catch{data={}}
-  c.innerHTML=`<div class="admin-head-row"><div><h3>Absensi Kelas</h3><p class="admin-help">Absensi otomatis menggunakan tanggal hari ini. Setiap hari memiliki data baru.</p></div><span class="attendance-date">${dateKey}</span></div>
+  c.innerHTML=`<div class="admin-head-row"><div><h3>Absensi Kelas</h3><p class="admin-help">Absensi otomatis menggunakan tanggal hari ini. Setiap hari memiliki data baru.</p></div><div class="attendance-head-actions"><span class="attendance-date">${dateKey}</span><button class="btn btn-primary admin-scan-trigger" type="button" onclick="openAdminBarcodeScanner()">▦ Scan Barcode</button></div></div>
   ${weekend?`<div class="attendance-closed"><b>Absensi Ditutup</b><p>Absensi hanya dibuka pada hari Senin sampai Jumat.</p></div>`:
   `<div class="attendance-table-wrap"><table class="attendance-table"><thead><tr><th>Nama</th><th>H</th><th>I</th><th>A</th></tr></thead><tbody>
   ${accounts.map(a=>{const st=data[a.nisn]||'';return `<tr><td><b>${escapeHTML(a.name)}</b><small>${escapeHTML(a.nisn)}</small></td>
@@ -1219,7 +1219,7 @@ async function submitFaceAttendance(){
  const manual=getManualAttendanceLocal(dateKey);
  manual[u.nisn]='H';
  localStorage.setItem('xi-attendance-'+dateKey,JSON.stringify(manual));
- syncManualAttendanceToSheets({date:dateKey,nisn:u.nisn,name:u.name,status:'H',keterangan:'Otomatis dari Absen Foto Muka'});
+ syncManualAttendanceToSheets({date:dateKey,nisn:u.nisn,name:u.name,status:'H',keterangan:'H',metode:'FOTO MUKA'});
  if(DRIVE_UPLOAD_URL)uploadFaceToDrive(record);
  setFaceStatus('Absensi foto berhasil. Status manual otomatis menjadi H.','success');
  document.getElementById('faceSubmitActions').hidden=true;document.getElementById('faceCameraCapture').disabled=true;
@@ -1363,7 +1363,10 @@ function renderFaceAdminPhotos(data){
 
 /* Sync the student-only menu item with the existing account session. */
 function syncFaceAttendanceMenu(){
- const link=document.getElementById('faceAttendanceLink'),u=faceSession();if(link)link.hidden=!(u&&u.role==='student');
+ const u=faceSession(),isStudent=!!u&&u.role==='student';
+ const link=document.getElementById('faceAttendanceLink'),barcodeLink=document.getElementById('studentBarcodeLink');
+ if(link)link.hidden=!isStudent;
+ if(barcodeLink)barcodeLink.hidden=!isStudent;
 }
 window.addEventListener('xi-session-changed',syncFaceAttendanceMenu);
 document.addEventListener('DOMContentLoaded',syncFaceAttendanceMenu);
@@ -1394,3 +1397,205 @@ syncFaceAttendanceMenu();
 document.getElementById('facePhotoViewerImage')?.addEventListener('click',e=>{
  e.currentTarget.classList.toggle('zoomed');
 });
+
+
+/* ===== BARCODE ABSENSI SISWA / ADMIN SCANNER ===== */
+(()=>{
+  let stream=null, scanning=false, timer=null, detector=null;
+
+  const getCurrentUser=()=>{try{return JSON.parse(sessionStorage.getItem('xi-account-session')||'null')}catch{return null}};
+  const localKey=()=>typeof localDateKey==='function'?localDateKey():new Date().toISOString().slice(0,10);
+
+  function barcodeAccount(nisn){
+    return (window.__CLASS_ACCOUNTS||[]).find(a=>String(a.nisn)===String(nisn))||null;
+  }
+
+  function setScannerStatus(text,state=''){
+    const el=document.getElementById('adminBarcodeStatus');
+    if(el){el.textContent=text;el.dataset.state=state}
+  }
+
+  function setScannerResult(name,meta,status='Menunggu barcode…',ok=false){
+    const n=document.getElementById('adminBarcodeResultName'),m=document.getElementById('adminBarcodeResultMeta'),s=document.getElementById('adminBarcodeResultStatus');
+    if(n)n.textContent=name||'Belum ada scan';
+    if(m)m.textContent=meta||'Hasil scan akan tampil di sini.';
+    if(s){s.textContent=status;s.dataset.state=ok?'success':''}
+  }
+
+  async function markPresentFromBarcode(nisn){
+    const u=getCurrentUser();
+    if(!u||u.role!=='admin'){toast('Fitur scan barcode hanya tersedia untuk Administrator.');return false}
+    const account=barcodeAccount(String(nisn).trim());
+    if(!account){setScannerStatus('Barcode tidak dikenali. NISN tidak ada di database kelas.','error');setScannerResult('Barcode tidak dikenali','NISN: '+nisn,'Tidak ada akun siswa dengan NISN tersebut.');return false}
+    const dateKey=localKey(), day=new Date().getDay();
+    if(day===0||day===6){setScannerStatus('Absensi ditutup pada Sabtu dan Minggu.','error');setScannerResult(account.name,account.nisn,'Absensi hari ini ditutup.');return false}
+
+    let data=getManualAttendanceLocal(dateKey);
+    const before=data[account.nisn]||'';
+    if(before==='H'){
+      setScannerStatus('Siswa ini sudah berstatus Hadir hari ini.','ready');
+      setScannerResult(account.name,'NISN: '+account.nisn,'Sudah H — tidak dicatat ulang.',true);
+      toast(account.name+' sudah Hadir hari ini.');
+      return true;
+    }
+
+    data[account.nisn]='H';
+    localStorage.setItem('xi-attendance-'+dateKey,JSON.stringify(data));
+    setScannerStatus('Menyimpan status Hadir ke Google Sheets…','ready');
+    setScannerResult(account.name,'NISN: '+account.nisn,(before?('Status '+before+' → H'):'Status → H')+' • menyimpan…',true);
+
+    try{
+      await syncManualAttendanceToSheets({date:dateKey,nisn:account.nisn,name:account.name,status:'H',kelas:'XI TKJ 1',keterangan:'H',metode:'BARCODE'});
+      setScannerStatus('✓ Absensi berhasil dicatat sebagai Hadir.','success');
+      setScannerResult(account.name,'NISN: '+account.nisn,'HADIR (H) • tersimpan di Google Sheets',true);
+      toast('✓ '+account.name+' berhasil absen Hadir.');
+    }catch(err){
+      setScannerStatus('H tersimpan di perangkat, tetapi sinkron Google Sheets gagal.','error');
+      setScannerResult(account.name,'NISN: '+account.nisn,'HADIR (H) • sinkron gagal, coba scan/simpan lagi.',true);
+      toast('H tersimpan lokal. Google Sheets: '+err.message);
+    }
+    if(typeof adminRender==='function')adminRender('attendance');
+    return true;
+  }
+
+  async function handleDetected(raw){
+    const nisn=String(raw||'').trim().replace(/\s+/g,'');
+    if(!nisn)return;
+    await stopScanner();
+    const ok=await markPresentFromBarcode(nisn);
+    if(ok){
+      setTimeout(()=>{const modal=document.getElementById('adminBarcodeModal');if(modal?.classList.contains('show'))startScanner()},1200);
+    }else{
+      setTimeout(()=>{const modal=document.getElementById('adminBarcodeModal');if(modal?.classList.contains('show'))startScanner()},1200);
+    }
+  }
+
+  async function scanLoop(){
+    if(!scanning||!stream||!detector)return;
+    const video=document.getElementById('adminBarcodeVideo');
+    if(!video||video.readyState<2){timer=setTimeout(scanLoop,250);return}
+    try{
+      const results=await detector.detect(video);
+      if(results&&results.length){
+        const raw=results[0].rawValue||'';
+        if(raw){await handleDetected(raw);return}
+      }
+    }catch(_){}
+    timer=setTimeout(scanLoop,220);
+  }
+
+  async function startScanner(){
+    const u=getCurrentUser();
+    if(!u||u.role!=='admin'){toast('Login sebagai admin untuk menggunakan Scanner Barcode.');return}
+    const video=document.getElementById('adminBarcodeVideo'),ph=document.getElementById('adminBarcodePlaceholder');
+    if(!video)return;
+    if(!('BarcodeDetector' in window)){
+      setScannerStatus('Browser ini belum mendukung BarcodeDetector. Gunakan Chrome/Edge terbaru atau pilih gambar barcode.','error');
+      if(ph){ph.style.display='grid';ph.querySelector('small').textContent='Gunakan tombol Pilih gambar barcode sebagai alternatif.'}
+      return;
+    }
+    try{
+      const supported=await BarcodeDetector.getSupportedFormats();
+      const wanted=['qr_code','code_128','code_39','ean_13','ean_8','upc_a','upc_e'];
+      const formats=wanted.filter(x=>supported.includes(x));
+      detector=new BarcodeDetector({formats:formats.length?formats:['qr_code']});
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});
+      video.srcObject=stream;
+      await video.play();
+      scanning=true;
+      if(ph)ph.style.display='none';
+      setScannerStatus('Scanner aktif — arahkan kamera ke barcode siswa.','ready');
+      scanLoop();
+    }catch(e){
+      setScannerStatus('Kamera tidak bisa dibuka. Izinkan akses kamera lalu coba lagi.','error');
+      toast('Kamera scanner tidak dapat dibuka.');
+      await stopScanner();
+    }
+  }
+
+  async function stopScanner(){
+    scanning=false;
+    if(timer){clearTimeout(timer);timer=null}
+    if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+    const video=document.getElementById('adminBarcodeVideo');
+    if(video)video.srcObject=null;
+    const ph=document.getElementById('adminBarcodePlaceholder');
+    if(ph)ph.style.display='grid';
+  }
+
+  async function decodeBarcodeImage(file){
+    const u=getCurrentUser();
+    if(!u||u.role!=='admin'){toast('Fitur ini hanya untuk admin.');return}
+    if(!('BarcodeDetector' in window)){toast('Browser tidak mendukung pembacaan barcode dari gambar. Gunakan kamera scanner.');return}
+    try{
+      const img=new Image();
+      img.onload=async()=>{
+        try{
+          const formats=await BarcodeDetector.getSupportedFormats();
+          detector=new BarcodeDetector({formats:formats.filter(x=>['qr_code','code_128','code_39','ean_13','ean_8','upc_a','upc_e'].includes(x))});
+          const results=await detector.detect(img);
+          if(results?.length)handleDetected(results[0].rawValue||'');
+          else {setScannerStatus('Barcode tidak ditemukan pada gambar.','error');toast('Barcode tidak ditemukan.');}
+        }catch(e){setScannerStatus('Gambar barcode tidak dapat dibaca.','error');toast('Gagal membaca barcode.')}
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror=()=>toast('Gambar barcode tidak valid.');
+      img.src=URL.createObjectURL(file);
+    }catch(e){toast('Gagal memproses gambar barcode.')}
+  }
+
+  function openAdminBarcodeScanner(){
+    const u=getCurrentUser();
+    if(!u||u.role!=='admin'){toast('Scanner barcode hanya dapat dibuka oleh Administrator.');return}
+    const modal=document.getElementById('adminBarcodeModal');if(!modal)return;
+    modal.classList.add('show');modal.setAttribute('aria-hidden','false');
+    setScannerStatus('Kamera belum aktif.','');
+    setScannerResult('Belum ada scan','Hasil scan akan tampil di sini.','Menunggu barcode…',false);
+  }
+
+  function closeAdminBarcodeScanner(){
+    stopScanner();
+    const modal=document.getElementById('adminBarcodeModal');
+    if(modal){modal.classList.remove('show');modal.setAttribute('aria-hidden','true')}
+  }
+
+  function openStudentBarcode(){
+    const u=getCurrentUser();
+    if(!u||u.role!=='student'){toast('Login sebagai siswa untuk melihat Barcode Saya.');return}
+    const modal=document.getElementById('studentBarcodeModal'),img=document.getElementById('studentBarcodeImage');
+    if(!modal||!img)return;
+    const account=barcodeAccount(u.nisn);
+    if(!account){toast('Data barcode siswa tidak ditemukan.');return}
+    document.getElementById('studentBarcodeName').textContent=account.name;
+    document.getElementById('studentBarcodeNisn').textContent=account.nisn;
+    document.getElementById('studentBarcodeDate').textContent='ID SISWA • XI TKJ 1';
+    img.src='BARCODE%20SISWA/'+encodeURIComponent(account.nisn)+'.png';
+    modal.classList.add('show');modal.setAttribute('aria-hidden','false');
+  }
+
+  function closeStudentBarcode(){
+    const modal=document.getElementById('studentBarcodeModal');
+    if(modal){modal.classList.remove('show');modal.setAttribute('aria-hidden','true')}
+  }
+
+  window.openAdminBarcodeScanner=openAdminBarcodeScanner;
+  window.closeAdminBarcodeScanner=closeAdminBarcodeScanner;
+  window.openStudentBarcode=openStudentBarcode;
+
+  document.getElementById('adminBarcodeStart')?.addEventListener('click',startScanner);
+  document.getElementById('adminBarcodeStop')?.addEventListener('click',stopScanner);
+  document.getElementById('adminBarcodeUpload')?.addEventListener('click',()=>document.getElementById('adminBarcodeFile')?.click());
+  document.getElementById('adminBarcodeFile')?.addEventListener('change',e=>{const f=e.target.files?.[0];if(f)decodeBarcodeImage(f);e.target.value=''});
+  document.getElementById('adminBarcodeClose')?.addEventListener('click',closeAdminBarcodeScanner);
+  document.getElementById('adminBarcodeModal')?.addEventListener('click',e=>{if(e.target.id==='adminBarcodeModal')closeAdminBarcodeScanner()});
+  document.getElementById('studentBarcodeClose')?.addEventListener('click',closeStudentBarcode);
+  document.getElementById('studentBarcodeClose2')?.addEventListener('click',closeStudentBarcode);
+  document.getElementById('studentBarcodeModal')?.addEventListener('click',e=>{if(e.target.id==='studentBarcodeModal')closeStudentBarcode()});
+  document.getElementById('studentBarcodeLink')?.addEventListener('click',e=>{e.preventDefault();document.getElementById('mobileMenu')?.classList.remove('show');openStudentBarcode()});
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){
+      closeAdminBarcodeScanner();
+      closeStudentBarcode();
+    }
+  });
+})();

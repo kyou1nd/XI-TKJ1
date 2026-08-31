@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#4055ff">
 <title>XI TKJ 1 — Class Website</title>
-<link rel="stylesheet" href="style.css?v=hero-fix-3">
+<link rel="stylesheet" href="style.css?v=barcode-absensi-1">
 <meta name="description" content="XI TKJ 1 digital class website untuk informasi, tugas, materi, jadwal, dan akun siswa.">
 
 <link rel="icon" href="assets/kyou-logo.svg">
@@ -88,6 +88,7 @@
         <a href="#events"><span class="menu-icon">E</span><span><b>Event</b><small>Kegiatan dan agenda kelas</small></span><em>›</em></a>
         <a href="#links"><span class="menu-icon">↗</span><span><b>Link Hub</b><small>Tautan penting kelas</small></span><em>›</em></a>
         <a href="#faceAttendance" id="faceAttendanceLink" hidden><span class="menu-icon">A</span><span><b>Absen Foto Muka</b><small>Absensi khusus siswa</small></span><strong class="menu-new-badge">ABSEN</strong></a>
+        <a href="#studentBarcode" id="studentBarcodeLink" hidden><span class="menu-icon">▦</span><span><b>Barcode Saya</b><small>Tampilkan barcode NISN untuk absensi</small></span><strong class="menu-new-badge">ID</strong></a>
       </div>
     </div>
   </div>
@@ -505,6 +506,72 @@
       <label>URL Google Drive / File <input id="fileCenterUrl" type="url" placeholder="https://drive.google.com/..."></label>
     </div>
     <div class="file-center-actions"><button class="mini-btn" id="fileCenterCancel" type="button">Batal</button><button class="btn btn-primary" id="fileCenterSave" type="button">Simpan File</button></div>
+  </div>
+</div>
+
+
+<div class="modal student-barcode-modal" id="studentBarcodeModal" aria-hidden="true">
+  <div class="student-barcode-box">
+    <button class="modal-close" id="studentBarcodeClose" type="button" aria-label="Tutup">×</button>
+    <div class="student-barcode-head">
+      <span class="eyebrow">XI TKJ 1 • STUDENT ID</span>
+      <h2>Barcode Absensi</h2>
+      <p>Tunjukkan barcode ini kepada admin saat melakukan absensi. Barcode berisi NISN akun kamu.</p>
+    </div>
+    <div class="student-barcode-card">
+      <div class="student-barcode-top">
+        <span class="student-barcode-status"><i></i> BARCODE AKTIF</span>
+        <span id="studentBarcodeDate"></span>
+      </div>
+      <div class="student-barcode-image-wrap">
+        <img id="studentBarcodeImage" src="" alt="Barcode NISN siswa">
+      </div>
+      <div class="student-barcode-name" id="studentBarcodeName">Siswa</div>
+      <div class="student-barcode-nisn"><span>NISN</span><b id="studentBarcodeNisn">-</b></div>
+      <div class="student-barcode-note"><span>✓</span><small>Gunakan barcode ini untuk scan absensi oleh admin. Jangan bagikan ke orang lain.</small></div>
+    </div>
+    <div class="student-barcode-actions">
+      <button class="mini-btn" id="studentBarcodeClose2" type="button">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal admin-barcode-modal" id="adminBarcodeModal" aria-hidden="true">
+  <div class="admin-barcode-box">
+    <button class="modal-close" id="adminBarcodeClose" type="button" aria-label="Tutup scanner">×</button>
+    <div class="admin-barcode-head">
+      <div>
+        <span class="eyebrow">ADMIN CONTROL • ATTENDANCE</span>
+        <h2>Scan Barcode Siswa</h2>
+        <p>Scan barcode siswa untuk langsung memberi status <b>Hadir (H)</b> pada absensi hari ini.</p>
+      </div>
+      <span class="admin-scanner-live"><i></i> ADMIN ONLY</span>
+    </div>
+    <div class="admin-scanner-layout">
+      <div class="admin-scanner-camera">
+        <div class="scanner-frame">
+          <video id="adminBarcodeVideo" playsinline muted></video>
+          <div class="scanner-placeholder" id="adminBarcodePlaceholder"><span>▣</span><b>Scanner siap</b><small>Tekan tombol mulai kamera</small></div>
+          <div class="scanner-corners"></div>
+          <div class="scanner-line"></div>
+        </div>
+        <div class="admin-scanner-status" id="adminBarcodeStatus">Kamera belum aktif.</div>
+        <div class="admin-scanner-actions">
+          <button class="btn btn-primary" id="adminBarcodeStart" type="button">▣ Mulai Scanner</button>
+          <button class="mini-btn" id="adminBarcodeStop" type="button">Berhenti</button>
+        </div>
+        <input id="adminBarcodeFile" type="file" accept="image/*" hidden>
+        <button class="scanner-upload-btn" id="adminBarcodeUpload" type="button">Pilih gambar barcode</button>
+      </div>
+      <div class="admin-scanner-result" id="adminBarcodeResult">
+        <span class="eyebrow">SCAN RESULT</span>
+        <div class="scanner-result-icon">✓</div>
+        <h3 id="adminBarcodeResultName">Belum ada scan</h3>
+        <p id="adminBarcodeResultMeta">Hasil scan akan tampil di sini.</p>
+        <div class="scanner-result-status" id="adminBarcodeResultStatus">Menunggu barcode…</div>
+      </div>
+    </div>
+    <div class="admin-scanner-note"><span>SECURE</span> Scanner ini hanya dapat dibuka dari sesi Administrator. Setiap scan hanya mencatat satu siswa sebagai Hadir untuk tanggal hari ini.</div>
   </div>
 </div>
 
