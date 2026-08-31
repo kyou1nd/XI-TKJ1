@@ -28,13 +28,15 @@ function doPost(e){
     if(action==='saveManualAttendance') return json_(saveManual_(p));
     if(action==='saveManualAttendanceBatch') return json_(saveManualBatch_(p));
     if(action==='deleteManualAttendance') return json_(deleteManual_(p));
+    if(action==='testConnection') return json_({ok:true,message:'Apps Script aktif',spreadsheet:SPREADSHEET_ID,manualSheet:MANUAL_SHEET});
     return json_({ok:false,error:'Unknown action'});
   }catch(err){ return json_({ok:false,error:String(err)}); }
 }
 
 function saveManual_(p){
-  const date=clean_(p.date), nisn=clean_(p.nisn), name=clean_(p.name), status=clean_(p.status);
+  const date=clean_(p.date), nisn=clean_(p.nisn), name=clean_(p.name), status=clean_(p.status).toUpperCase();
   if(!date||!nisn||!name||!status) return {ok:false,error:'Data absensi manual tidak lengkap.'};
+  if(['H','I','A'].indexOf(status)===-1) return {ok:false,error:'Status absensi harus H, I, atau A.'};
 
   const lock=LockService.getScriptLock();
   lock.tryLock(8000);
@@ -165,6 +167,7 @@ function doGet(e){
   if(p.action==='deleteManualAttendance') return jsonp_(deleteManual_(p),p.callback);
   if(p.action==='attendanceSummary') return attendanceSummary_(p);
   if(p.action==='attendanceStatus') return attendanceStatus_(p);
+  if(p.action==='testConnection') return jsonp_({ok:true,message:'Apps Script aktif',spreadsheet:SPREADSHEET_ID},p.callback);
   if(p.action==='listFaceAttendance'){
     const date=clean_(p.date), records=[], files=folder_().getFiles();
     while(files.hasNext()){
