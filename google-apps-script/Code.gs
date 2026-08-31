@@ -60,6 +60,7 @@ function doPost(e){
     const p=e.parameter||{}, action=p.action||'';
     if(action==='uploadFaceAttendance') return saveFace_(p);
     if(action==='saveManualAttendance') return json_(saveManual_(p));
+    if(action==='saveBarcodeAttendance') return json_(saveBarcodeAttendance_(p));
     if(action==='saveManualAttendanceBatch') return json_(saveManualBatch_(p));
     if(action==='deleteManualAttendance') return json_(deleteManual_(p));
     if(action==='testConnection') return json_(testConnection_());
@@ -74,6 +75,41 @@ function normalizeDate_(value){
   const m=str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
   if(m) return m[3]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2);
   return str;
+}
+
+
+
+function saveBarcodeAttendance_(p){
+  const nisn=clean_(p.nisn);
+  const date=clean_(p.date) || Utilities.formatDate(new Date(),'Asia/Jakarta','yyyy-MM-dd');
+  if(!nisn) return {ok:false,error:'NISN barcode kosong.'};
+
+  const ss=ss_();
+  const siswa=ss.getSheetByName('SISWA');
+  if(!siswa) return {ok:false,error:'Sheet SISWA tidak ditemukan.'};
+  if(siswa.getLastRow()<2) return {ok:false,error:'Sheet SISWA belum berisi data siswa.'};
+
+  const values=siswa.getRange(2,1,siswa.getLastRow()-1,3).getDisplayValues();
+  let student=null;
+  for(let i=0;i<values.length;i++){
+    if(String(values[i][0]).trim()===nisn){
+      student={nisn:String(values[i][0]).trim(),name:String(values[i][1]).trim(),kelas:String(values[i][2]).trim()||'XI TKJ 1'};
+      break;
+    }
+  }
+  if(!student) return {ok:false,error:'NISN '+nisn+' tidak ditemukan di sheet SISWA.'};
+
+  const result=saveManual_({
+    date:date,
+    nisn:student.nisn,
+    name:student.name,
+    kelas:student.kelas,
+    status:'H',
+    metode:'BARCODE'
+  });
+  if(!result.ok) return result;
+
+  return {ok:true,message:'Absensi barcode berhasil disimpan.',date:date,nisn:student.nisn,name:student.name,kelas:student.kelas,status:'H',metode:'BARCODE'};
 }
 
 function saveManual_(p){
@@ -206,6 +242,7 @@ function attendanceSummary_(p){
 function doGet(e){
   const p=e.parameter||{};
   if(p.action==='saveManualAttendance') return jsonp_(saveManual_(p),p.callback);
+  if(p.action==='saveBarcodeAttendance') return jsonp_(saveBarcodeAttendance_(p),p.callback);
   if(p.action==='saveManualAttendanceBatch') return jsonp_(saveManualBatch_(p),p.callback);
   if(p.action==='deleteManualAttendance') return jsonp_(deleteManual_(p),p.callback);
   if(p.action==='attendanceSummary') return attendanceSummary_(p);
