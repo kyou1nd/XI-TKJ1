@@ -1145,9 +1145,10 @@ function postAttendanceForm(url,fields){
  document.body.appendChild(form);form.submit();setTimeout(()=>{form.remove();iframe.remove()},20000);return true;
 }
 function syncManualAttendanceToSheets(record){
- const url=String(window.MANUAL_ATTENDANCE_URL||'').trim();
+ const url=String(window.MANUAL_ATTENDANCE_URL||window.DRIVE_UPLOAD_URL||'').trim();
  if(!url)return Promise.reject(new Error('URL Apps Script kosong'));
- return attendanceJsonp('saveManualAttendance',record);
+ const action=record&&record.metode==='BARCODE'?'saveBarcodeAttendance':'saveManualAttendance';
+ return attendanceJsonp(action,record);
 }
 function syncManualAttendanceBatchToSheets(records){
  const url=String(window.MANUAL_ATTENDANCE_URL||window.DRIVE_UPLOAD_URL||'').trim();
@@ -1439,19 +1440,19 @@ document.getElementById('facePhotoViewerImage')?.addEventListener('click',e=>{
       return true;
     }
 
-    data[account.nisn]='H';
-    localStorage.setItem('xi-attendance-'+dateKey,JSON.stringify(data));
     setScannerStatus('Menyimpan status Hadir ke Google Sheets…','ready');
     setScannerResult(account.name,'NISN: '+account.nisn,(before?('Status '+before+' → H'):'Status → H')+' • menyimpan…',true);
 
     try{
       await syncManualAttendanceToSheets({date:dateKey,nisn:account.nisn,name:account.name,status:'H',kelas:'XI TKJ 1',keterangan:'H',metode:'BARCODE'});
+      data[account.nisn]='H';
+      localStorage.setItem('xi-attendance-'+dateKey,JSON.stringify(data));
       setScannerStatus('✓ Absensi berhasil dicatat sebagai Hadir.','success');
       setScannerResult(account.name,'NISN: '+account.nisn,'HADIR (H) • tersimpan di Google Sheets',true);
       toast('✓ '+account.name+' berhasil absen Hadir.');
     }catch(err){
       setScannerStatus('H tersimpan di perangkat, tetapi sinkron Google Sheets gagal.','error');
-      setScannerResult(account.name,'NISN: '+account.nisn,'HADIR (H) • sinkron gagal, coba scan/simpan lagi.',true);
+      setScannerResult(account.name,'NISN: '+account.nisn,'GAGAL SINKRON • '+(err?.message||'Apps Script tidak merespons.'),false);
       toast('H tersimpan lokal. Google Sheets: '+err.message);
     }
     if(typeof adminRender==='function')adminRender('attendance');
