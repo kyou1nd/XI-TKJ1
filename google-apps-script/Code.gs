@@ -19,7 +19,7 @@ const SPREADSHEET_ID = '1cNhhSqJkimc2cwoT2djXZzoCZX1bl2gtcmVtcNH-yew';
 const MANUAL_SHEET = 'ABSENSI';
 const FACE_SHEET = 'Absensi Foto Muka';
 
-const BACKEND_VERSION = 'XI-TKJ1-BARCODE-FACE-FIX-2026-08-31';
+const BACKEND_VERSION = 'XI-TKJ1-BARCODE-FACE-FINAL-2026-08-31';
 const TZ = 'Asia/Jakarta';
 
 
@@ -739,312 +739,476 @@ function saveManual_(p) {
    ===================================================== */
 
 function saveFace_(p) {
-  /*
-   * Upload foto absensi yang lebih tahan terhadap:
-   * - data URL (data:image/jpeg;base64,...)
-   * - base64 polos
-   * - base64 URL-safe
-   * - lokasi GPS kosong / belum tersedia
-   * - waktu dari HP yang tidak akurat
-   *
-   * Waktu absensi ditentukan SERVER Apps Script (Asia/Jakarta),
-   * sedangkan lokasi tetap memakai GPS dari frontend.
-   */
-  const date = clean_(p.date) || today_();
-  const nisn = clean_(p.nisn);
-  const name = clean_(p.name) || 'Siswa';
 
-  // Jangan percaya waktu dari browser untuk timestamp utama.
-  const serverNow = new Date();
-  const time = Utilities.formatDate(serverNow, TZ, 'HH:mm:ss');
+  const date =
+    clean_(p.date) || today_();
+
+  const nisn =
+    clean_(p.nisn);
+
+  const name =
+    clean_(p.name);
+
+  const time =
+    clean_(p.time) || nowTime_();
+
 
   if (!date || !nisn) {
+
     return json_({
       ok: false,
-      error: 'Tanggal atau NISN foto tidak lengkap.'
+      error:
+        'Tanggal atau NISN foto tidak lengkap.'
     });
   }
 
-  if (p.imageData === undefined || p.imageData === null || String(p.imageData).trim() === '') {
+
+  if (!p.imageData) {
+
     return json_({
       ok: false,
-      error: 'Foto tidak diterima server. imageData kosong.'
+      error:
+        'Foto tidak diterima server. imageData kosong.'
     });
   }
+
 
   let fldr;
+
   try {
+
     fldr = folder_();
+
   } catch (err) {
+
     return json_({
       ok: false,
-      error: err.message || String(err)
+      error:
+        err.message || String(err)
     });
   }
 
-  const lock = LockService.getScriptLock();
-  lock.waitLock(20000);
+
+  const lock =
+    LockService.getScriptLock();
+
+  lock.waitLock(15000);
 
   try {
-    /* -----------------------------------------------------
-       1. Ambil GPS sebagai metadata. GPS TIDAK boleh
-          menggagalkan upload foto.
-       ----------------------------------------------------- */
-    const latitude = String(p.latitude ?? '').trim();
-    const longitude = String(p.longitude ?? '').trim();
-    const accuracy = String(p.accuracy ?? '').trim();
 
-    let mapsUrl = String(p.mapsUrl ?? '').trim();
-    if (!mapsUrl && latitude && longitude) {
-      mapsUrl = 'https://www.google.com/maps?q=' +
-        encodeURIComponent(latitude + ',' + longitude);
-    }
+    const files =
+      fldr.getFiles();
 
-    const locationText = String(
-      p.locationText ?? p.address ?? ''
-    ).trim();
+    let file = null;
 
-    /* -----------------------------------------------------
-       2. Decode foto dengan aman.
-       ----------------------------------------------------- */
-    let raw = String(p.imageData).trim();
-    let mimeType = 'image/jpeg';
-    let extension = 'jpg';
 
-    // Tangani data URL, termasuk png/webp.
-    const dataUrlMatch = raw.match(/^data:([^;,]+)(?:;[^,]*)?,(.*)$/is);
-    if (dataUrlMatch) {
-      mimeType = dataUrlMatch[1].toLowerCase();
-      raw = dataUrlMatch[2];
-
-      if (mimeType === 'image/png') extension = 'png';
-      else if (mimeType === 'image/webp') extension = 'webp';
-      else if (mimeType === 'image/gif') extension = 'gif';
-      else {
-        mimeType = 'image/jpeg';
-        extension = 'jpg';
-      }
-    }
-
-    raw = raw.replace(/\s/g, '');
-
-    if (!raw) {
-      return json_({
-        ok: false,
-        error: 'Data foto kosong setelah diproses.'
-      });
-    }
-
-    let bytes;
-    try {
-      // Coba base64 standar terlebih dahulu.
-      try {
-        bytes = Utilities.base64Decode(raw, Utilities.Charset.UTF_8);
-      } catch (_) {
-        // Fallback untuk base64 URL-safe (- dan _).
-        bytes = Utilities.base64DecodeWebSafe(raw, Utilities.Charset.UTF_8);
-      }
-    } catch (err) {
-      return json_({
-        ok: false,
-        error: 'Format foto/base64 tidak valid: ' + (err.message || String(err))
-      });
-    }
-
-    if (!bytes || !bytes.length) {
-      return json_({
-        ok: false,
-        error: 'Foto berhasil dibaca tetapi isinya kosong.'
-      });
-    }
-
-    /* -----------------------------------------------------
-       3. Cari file absensi siswa pada tanggal yang sama.
-          Jika ada, hapus file lama agar foto terbaru benar-benar
-          masuk ke Drive. Ini memperbaiki kasus foto lama tetap muncul.
-       ----------------------------------------------------- */
-    const files = fldr.getFiles();
-    let oldFile = null;
+    /*
+     * Cari foto siswa pada tanggal yang sama.
+     */
 
     while (files.hasNext()) {
-      const f = files.next();
-      const description = f.getDescription() || '';
+
+      const f =
+        files.next();
+
+      const description =
+        f.getDescription() || '';
 
       try {
-        const meta = JSON.parse(description);
+
+        const meta =
+          JSON.parse(
+            description
+          );
+
         if (
-          meta.type === 'face-attendance' &&
-          meta.date === date &&
-          meta.nisn === nisn
+          meta.type ===
+            'face-attendance' &&
+
+          meta.date ===
+            date &&
+
+          meta.nisn ===
+            nisn
         ) {
-          oldFile = f;
+
+          file = f;
+
           break;
         }
+
       } catch (_) {}
     }
 
-    if (oldFile) {
+
+    /*
+     * Kalau belum ada, buat file baru.
+     */
+
+    if (!file) {
+
+      let base64 =
+        String(
+          p.imageData
+        );
+
+      /*
+       * Hilangkan prefix Data URL.
+       */
+
+      base64 =
+        base64.replace(
+          /^data:image\/[^;]+;base64,/i,
+          ''
+        );
+
+      /*
+       * Kalau frontend mengirim spasi/newline,
+       * bersihkan.
+       */
+
+      base64 =
+        base64.replace(
+          /\s/g,
+          ''
+        );
+
+
+      let bytes;
+
       try {
-        oldFile.setTrashed(true);
-      } catch (_) {
-        // Kalau file lama gagal dihapus, upload tetap diteruskan.
+
+        bytes =
+          Utilities.base64Decode(
+            base64
+          );
+
+      } catch (err) {
+
+        return json_({
+          ok: false,
+          error:
+            'Format foto/base64 tidak valid: ' +
+            err.message
+        });
       }
+
+
+      const safeName =
+        clean_(
+          name || 'Siswa'
+        );
+
+
+      const blob =
+        Utilities.newBlob(
+          bytes,
+          'image/jpeg',
+          'XI_TKJ1_FACE_' +
+          date +
+          '_' +
+          time +
+          '_' +
+          safeName +
+          '.jpg'
+        );
+
+
+      file =
+        fldr.createFile(
+          blob
+        );
     }
 
-    /* -----------------------------------------------------
-       4. Buat file foto baru di folder Drive.
-       ----------------------------------------------------- */
-    const safeName = clean_(name) || 'Siswa';
-    const stamp = Utilities.formatDate(serverNow, TZ, 'yyyyMMdd_HHmmss');
 
-    const blob = Utilities.newBlob(
-      bytes,
-      mimeType,
-      'XI_TKJ1_FACE_' + date + '_' + stamp + '_' + safeName + '.' + extension
-    );
+    /*
+     * Lokasi boleh kosong.
+     * Jangan blokir upload foto hanya karena GPS.
+     */
 
-    const file = fldr.createFile(blob);
-
-    /* -----------------------------------------------------
-       5. Tempel informasi lokasi + waktu sebagai METADATA Drive.
-          Informasi ini juga masuk ke Sheet.
-       ----------------------------------------------------- */
     const meta = {
-      type: 'face-attendance',
-      version: BACKEND_VERSION,
-      date: date,
-      nisn: nisn,
-      name: name,
-      time: time,
-      timestamp: serverNow.toISOString(),
-      timezone: TZ,
-      latitude: latitude,
-      longitude: longitude,
-      accuracy: accuracy,
-      mapsUrl: mapsUrl,
-      locationText: locationText
+
+      type:
+        'face-attendance',
+
+      date:
+        date,
+
+      nisn:
+        nisn,
+
+      name:
+        name,
+
+      time:
+        time,
+
+      latitude:
+        String(
+          p.latitude || ''
+        ),
+
+      longitude:
+        String(
+          p.longitude || ''
+        ),
+
+      accuracy:
+        String(
+          p.accuracy || ''
+        ),
+
+      mapsUrl:
+        String(
+          p.mapsUrl || ''
+        ),
+
+      locationText:
+        String(
+          p.locationText ||
+          p.address ||
+          ''
+        )
     };
 
-    file.setDescription(JSON.stringify(meta));
 
-    /* -----------------------------------------------------
-       6. Simpan / update record pada Sheet FOTO MUKA.
-       ----------------------------------------------------- */
-    const sh = sheet_(FACE_SHEET, [
-      'Timestamp',
-      'Tanggal',
-      'Waktu',
-      'NISN',
-      'Nama',
-      'Latitude',
-      'Longitude',
-      'Akurasi (meter)',
-      'Google Maps',
-      'Lokasi Alamat',
-      'File Drive'
-    ]);
+    file.setDescription(
+      JSON.stringify(
+        meta
+      )
+    );
 
-    const rows = sh.getLastRow() > 1
-      ? sh.getRange(2, 1, sh.getLastRow() - 1, 11).getValues()
-      : [];
+
+    /*
+     * SIMPAN KE SHEET FOTO MUKA
+     */
+
+    const sh =
+      sheet_(
+        FACE_SHEET,
+        [
+          'Timestamp',
+          'Tanggal',
+          'Waktu',
+          'NISN',
+          'Nama',
+          'Latitude',
+          'Longitude',
+          'Akurasi (meter)',
+          'Google Maps',
+          'Lokasi Alamat',
+          'File Drive'
+        ]
+      );
+
+
+    const rows =
+      sh.getLastRow() > 1
+        ? sh
+            .getRange(
+              2,
+              1,
+              sh.getLastRow() - 1,
+              11
+            )
+            .getValues()
+        : [];
+
 
     const row = [
-      serverNow,
+
+      new Date(),
+
       date,
+
       time,
+
       nisn,
+
       name,
-      latitude,
-      longitude,
-      accuracy,
-      mapsUrl,
-      locationText,
+
+      meta.latitude,
+
+      meta.longitude,
+
+      meta.accuracy,
+
+      meta.mapsUrl,
+
+      meta.locationText,
+
       file.getUrl()
+
     ];
+
 
     let updated = false;
 
-    for (let i = rows.length - 1; i >= 0; i--) {
+
+    for (
+      let i = 0;
+      i < rows.length;
+      i++
+    ) {
+
       if (
         normalizeDate_(rows[i][1]) === date &&
-        String(rows[i][3] || '').trim() === nisn
+        String(rows[i][3]).trim() === nisn
       ) {
-        sh.getRange(i + 2, 1, 1, 11).setValues([row]);
+
+        sh
+          .getRange(
+            i + 2,
+            1,
+            1,
+            11
+          )
+          .setValues([row]);
+
         updated = true;
+
         break;
       }
     }
 
+
     if (!updated) {
+
       sh.appendRow(row);
     }
 
-    /* -----------------------------------------------------
-       7. Masukkan foto muka sebagai HADIR di ABSENSI.
-       ----------------------------------------------------- */
-    let student = null;
-    try {
-      student = findStudent_(nisn);
-    } catch (_) {}
 
-    const finalName = student && student.name ? student.name : name;
-    const finalKelas = student && student.kelas
-      ? student.kelas
-      : clean_(p.kelas) || 'XI TKJ 1';
+    /*
+     * PENTING:
+     * FOTO MUKA JUGA MASUK ABSENSI MANUAL
+     * sebagai H.
+     *
+     * Jadi admin akan melihat H pada sheet ABSENSI,
+     * sama seperti barcode.
+     */
 
-    const manualResult = saveManual_({
-      date: date,
-      nisn: nisn,
-      name: finalName,
-      kelas: finalKelas,
-      status: 'H',
-      metode: 'FOTO MUKA'
-    });
+    const student =
+      findStudent_(nisn);
+
+
+    const finalName =
+      student && student.name
+        ? student.name
+        : name;
+
+    const finalKelas =
+      student && student.kelas
+        ? student.kelas
+        : clean_(p.kelas) || 'XI TKJ 1';
+
+
+    const manualResult =
+      saveManual_({
+
+        date:
+          date,
+
+        nisn:
+          nisn,
+
+        name:
+          finalName,
+
+        kelas:
+          finalKelas,
+
+        status:
+          'H',
+
+        metode:
+          'FOTO MUKA'
+
+      });
+
 
     if (!manualResult.ok) {
+
       return json_({
+
         ok: false,
-        error: 'Foto sudah masuk Drive, tetapi status H gagal disimpan: ' + manualResult.error,
-        fileId: file.getId(),
-        fileUrl: file.getUrl()
+
+        error:
+          'Foto tersimpan, tetapi status H gagal disimpan: ' +
+          manualResult.error,
+
+        fileId:
+          file.getId(),
+
+        fileUrl:
+          file.getUrl()
       });
     }
 
+
     SpreadsheetApp.flush();
 
+
     return json_({
+
       ok: true,
-      message: 'Foto absensi berhasil disimpan.',
-      id: file.getId(),
-      url: file.getUrl(),
-      date: date,
-      time: time,
-      timestamp: serverNow.toISOString(),
-      timezone: TZ,
-      nisn: nisn,
-      name: finalName,
-      kelas: finalKelas,
-      status: 'H',
-      metode: 'FOTO MUKA',
-      locationSaved: !!(latitude && longitude),
-      latitude: latitude,
-      longitude: longitude,
-      accuracy: accuracy,
-      mapsUrl: mapsUrl,
-      locationText: locationText
+
+      message:
+        'Terima kasih, sudah absen hari ini.',
+
+      id:
+        file.getId(),
+
+      url:
+        file.getUrl(),
+
+      date:
+        date,
+
+      time:
+        time,
+
+      nisn:
+        nisn,
+
+      name:
+        finalName,
+
+      kelas:
+        finalKelas,
+
+      status:
+        'H',
+
+      metode:
+        'FOTO MUKA',
+
+      locationSaved:
+        !!(
+          meta.latitude ||
+          meta.longitude
+        )
     });
 
+
   } catch (err) {
+
     return json_({
+
       ok: false,
-      error: err.message || String(err)
+
+      error:
+        err.message ||
+        String(err)
     });
+
   } finally {
+
     try {
       lock.releaseLock();
     } catch (_) {}
   }
 }
+
 
 /* =====================================================
    STATUS ABSENSI
