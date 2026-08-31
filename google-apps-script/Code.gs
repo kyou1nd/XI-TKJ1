@@ -7,8 +7,22 @@ const SPREADSHEET_ID = '1tgPeu6Acxi0r6z3SyYQ4cbUaMq5sg_eDCA8SIKvu6FA';
 const MANUAL_SHEET = 'Absensi Manual';
 const FACE_SHEET = 'Absensi Foto Muka';
 
-function folder_(){ return DriveApp.getFolderById(FOLDER_ID); }
-function ss_(){ const ss=SpreadsheetApp.openById(SPREADSHEET_ID); try{ss.setSpreadsheetTimeZone('Asia/Jakarta')}catch(_){} return ss; }
+function folder_(){
+  try {
+    return DriveApp.getFolderById(FOLDER_ID);
+  } catch (err) {
+    throw new Error('Google Drive belum berizin atau FOLDER_ID tidak dapat diakses. Jalankan setup() sekali dari editor Apps Script dengan akun pemilik folder. Detail: ' + err.message);
+  }
+}
+function ss_(){
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    try { ss.setSpreadsheetTimeZone('Asia/Jakarta'); } catch (_) {}
+    return ss;
+  } catch (err) {
+    throw new Error('Google Sheets belum berizin. Jalankan fungsi setup() sekali dari editor Apps Script dengan akun pemilik Spreadsheet, izinkan akses Google Sheets dan Drive, lalu Deploy ulang sebagai Web App dengan Execute as: Me. Detail: ' + err.message);
+  }
+}
 function clean_(s){ return String(s||'').replace(/[\\/:*?"<>|#%{}~&]/g,'_').slice(0,120); }
 function sheet_(name, headers){
   const ss=ss_(); let sh=ss.getSheetByName(name);
@@ -21,6 +35,26 @@ function jsonp_(obj,cb){
   return json_(obj);
 }
 
+function setup(){
+  // Jalankan SEKALI dari editor Apps Script untuk memicu authorization.
+  const ss = ss_();
+  const folder = folder_();
+  const manual = sheet_(MANUAL_SHEET,['Timestamp','Tanggal','NISN','Nama','Kelas','Status','Keterangan']);
+  const face = sheet_(FACE_SHEET,['Timestamp','Tanggal','Waktu','NISN','Nama','Latitude','Longitude','Akurasi (meter)','Google Maps','Lokasi Alamat','File Drive']);
+  return {ok:true, spreadsheet:ss.getName(), spreadsheetId:ss.getId(), folder:folder.getName(), folderId:folder.getId(), manualSheet:manual.getName(), faceSheet:face.getName()};
+}
+
+function testConnection_(){
+  try {
+    const ss = ss_();
+    const folder = folder_();
+    const manual = sheet_(MANUAL_SHEET,['Timestamp','Tanggal','NISN','Nama','Kelas','Status','Keterangan']);
+    return {ok:true,message:'Koneksi Google Sheets dan Drive berhasil',spreadsheet:ss.getName(),spreadsheetId:ss.getId(),folder:folder.getName(),manualSheet:manual.getName()};
+  } catch(err) {
+    return {ok:false,error:String(err && err.message ? err.message : err)};
+  }
+}
+
 function doPost(e){
   try{
     const p=e.parameter||{}, action=p.action||'';
@@ -28,9 +62,18 @@ function doPost(e){
     if(action==='saveManualAttendance') return json_(saveManual_(p));
     if(action==='saveManualAttendanceBatch') return json_(saveManualBatch_(p));
     if(action==='deleteManualAttendance') return json_(deleteManual_(p));
-    if(action==='testConnection') return json_({ok:true,message:'Apps Script aktif',spreadsheet:SPREADSHEET_ID,manualSheet:MANUAL_SHEET});
+    if(action==='testConnection') return json_(testConnection_());
     return json_({ok:false,error:'Unknown action'});
   }catch(err){ return json_({ok:false,error:String(err)}); }
+}
+
+function normalizeDate_(value){
+  if(value instanceof Date && !isNaN(value.getTime())) return Utilities.formatDate(value,'Asia/Jakarta','yyyy-MM-dd');
+  const str=String(value||'').trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const m=str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if(m) return m[3]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2);
+  return str;
 }
 
 function saveManual_(p){
@@ -46,7 +89,7 @@ function saveManual_(p){
     const rows=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,7).getValues():[];
     let foundRow=0;
     for(let i=rows.length-1;i>=0;i--){
-      if(String(rows[i][1])===date && String(rows[i][2])===nisn){foundRow=i+2;break;}
+      if(normalizeDate_(rows[i][1])===date && String(rows[i][2]).trim()===nisn){foundRow=i+2;break;}
     }
     const row=[now,date,nisn,name,'XI TKJ 1',status,clean_(p.keterangan)];
     if(foundRow) sh.getRange(foundRow,1,1,7).setValues([row]);
@@ -66,7 +109,7 @@ function deleteManual_(p){
   const rows=sh.getRange(2,1,sh.getLastRow()-1,7).getValues();
   let deleted=0;
   for(let i=rows.length-1;i>=0;i--){
-    if(String(rows[i][1])===date&&String(rows[i][2])===nisn){sh.deleteRow(i+2);deleted++;}
+    if(normalizeDate_(rows[i][1])===date&&String(rows[i][2]).trim()===nisn){sh.deleteRow(i+2);deleted++;}
   }
   SpreadsheetApp.flush();
   return {ok:true,deleted};
@@ -117,14 +160,14 @@ function attendanceStatus_(p){
     if(msh&&msh.getLastRow()>1){
       const rows=msh.getRange(2,1,msh.getLastRow()-1,7).getValues();
       for(let i=rows.length-1;i>=0;i--){
-        if(String(rows[i][1])===date&&String(rows[i][2])===nisn){manualStatus=String(rows[i][5]||'');break;}
+        if(normalizeDate_(rows[i][1])===date&&String(rows[i][2]).trim()===nisn){manualStatus=String(rows[i][5]||'');break;}
       }
     }
     const fsh=ss.getSheetByName(FACE_SHEET);
     if(fsh&&fsh.getLastRow()>1){
       const rows=fsh.getRange(2,1,fsh.getLastRow()-1,11).getValues();
       for(let i=rows.length-1;i>=0;i--){
-        if(String(rows[i][1])===date&&String(rows[i][3])===nisn){
+        if(normalizeDate_(rows[i][1])===date&&String(rows[i][3]).trim()===nisn){
           faceDone=true;
           record={date:String(rows[i][1]||''),time:String(rows[i][2]||''),nisn:String(rows[i][3]||''),name:String(rows[i][4]||''),latitude:String(rows[i][5]||''),longitude:String(rows[i][6]||''),accuracy:String(rows[i][7]||''),mapsUrl:String(rows[i][8]||''),locationText:String(rows[i][9]||''),url:String(rows[i][10]||'')};
           break;
@@ -147,12 +190,12 @@ function attendanceSummary_(p){
   const manual={};
   if(manualSheet.getLastRow()>1){
     const rows=manualSheet.getRange(2,1,manualSheet.getLastRow()-1,7).getValues();
-    rows.forEach(r=>{if(String(r[1])===date&&r[2]) manual[String(r[2])]={date:String(r[1]),nisn:String(r[2]),name:String(r[3]||''),status:String(r[5]||''),keterangan:String(r[6]||''),timestamp:r[0] instanceof Date?r[0].toISOString():String(r[0]||''),time:r[0] instanceof Date?Utilities.formatDate(r[0],Session.getScriptTimeZone(),'HH:mm'):''};});
+    rows.forEach(r=>{if(normalizeDate_(r[1])===date&&r[2]) manual[String(r[2])]={date:String(r[1]),nisn:String(r[2]),name:String(r[3]||''),status:String(r[5]||''),keterangan:String(r[6]||''),timestamp:r[0] instanceof Date?r[0].toISOString():String(r[0]||''),time:r[0] instanceof Date?Utilities.formatDate(r[0],Session.getScriptTimeZone(),'HH:mm'):''};});
   }
   const face=[];
   if(faceSheet.getLastRow()>1){
     const rows=faceSheet.getRange(2,1,faceSheet.getLastRow()-1,11).getValues();
-    rows.forEach(r=>{if(String(r[1])===date&&r[3]) face.push({date:String(r[1]),time:String(r[2]||''),nisn:String(r[3]),name:String(r[4]||''),latitude:String(r[5]||''),longitude:String(r[6]||''),accuracy:String(r[7]||''),mapsUrl:String(r[8]||''),locationText:String(r[9]||''),url:String(r[10]||'')});});
+    rows.forEach(r=>{if(normalizeDate_(r[1])===date&&r[3]) face.push({date:String(r[1]),time:String(r[2]||''),nisn:String(r[3]),name:String(r[4]||''),latitude:String(r[5]||''),longitude:String(r[6]||''),accuracy:String(r[7]||''),mapsUrl:String(r[8]||''),locationText:String(r[9]||''),url:String(r[10]||'')});});
   }
   const obj={ok:true,date,manual,face};
   const cb=p.callback;
@@ -167,7 +210,7 @@ function doGet(e){
   if(p.action==='deleteManualAttendance') return jsonp_(deleteManual_(p),p.callback);
   if(p.action==='attendanceSummary') return attendanceSummary_(p);
   if(p.action==='attendanceStatus') return attendanceStatus_(p);
-  if(p.action==='testConnection') return jsonp_({ok:true,message:'Apps Script aktif',spreadsheet:SPREADSHEET_ID},p.callback);
+  if(p.action==='testConnection') return jsonp_(testConnection_(),p.callback);
   if(p.action==='listFaceAttendance'){
     const date=clean_(p.date), records=[], files=folder_().getFiles();
     while(files.hasNext()){
