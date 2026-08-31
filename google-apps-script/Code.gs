@@ -3,8 +3,8 @@
  Website tetap di GitHub Pages. Apps Script hanya menerima data absensi.
 */
 const FOLDER_ID = '1Flcbrukb1Ln2x-uhDhUyWUc0eHp8EZoQ';
-const SPREADSHEET_ID = '1tgPeu6Acxi0r6z3SyYQ4cbUaMq5sg_eDCA8SIKvu6FA';
-const MANUAL_SHEET = 'Absensi Manual';
+const SPREADSHEET_ID = '1cNhhSqJkimc2cwoT2djXZzoCZX1bl2gtcmVtcNH-yew';
+const MANUAL_SHEET = 'ABSENSI';
 const FACE_SHEET = 'Absensi Foto Muka';
 
 function folder_(){
@@ -39,7 +39,7 @@ function setup(){
   // Jalankan SEKALI dari editor Apps Script untuk memicu authorization.
   const ss = ss_();
   const folder = folder_();
-  const manual = sheet_(MANUAL_SHEET,['Timestamp','Tanggal','NISN','Nama','Kelas','Status','Keterangan']);
+  const manual = sheet_(MANUAL_SHEET,['Tanggal','NISN','Nama Siswa','Kelas','Keterangan','Waktu','Metode']);
   const face = sheet_(FACE_SHEET,['Timestamp','Tanggal','Waktu','NISN','Nama','Latitude','Longitude','Akurasi (meter)','Google Maps','Lokasi Alamat','File Drive']);
   return {ok:true, spreadsheet:ss.getName(), spreadsheetId:ss.getId(), folder:folder.getName(), folderId:folder.getId(), manualSheet:manual.getName(), faceSheet:face.getName()};
 }
@@ -48,7 +48,7 @@ function testConnection_(){
   try {
     const ss = ss_();
     const folder = folder_();
-    const manual = sheet_(MANUAL_SHEET,['Timestamp','Tanggal','NISN','Nama','Kelas','Status','Keterangan']);
+    const manual = sheet_(MANUAL_SHEET,['Tanggal','NISN','Nama Siswa','Kelas','Keterangan','Waktu','Metode']);
     return {ok:true,message:'Koneksi Google Sheets dan Drive berhasil',spreadsheet:ss.getName(),spreadsheetId:ss.getId(),folder:folder.getName(),manualSheet:manual.getName()};
   } catch(err) {
     return {ok:false,error:String(err && err.message ? err.message : err)};
@@ -84,14 +84,14 @@ function saveManual_(p){
   const lock=LockService.getScriptLock();
   lock.tryLock(8000);
   try{
-    const sh=sheet_(MANUAL_SHEET,['Timestamp','Tanggal','NISN','Nama','Kelas','Status','Keterangan']);
+    const sh=sheet_(MANUAL_SHEET,['Tanggal','NISN','Nama Siswa','Kelas','Keterangan','Waktu','Metode']);
     const now=new Date();
     const rows=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,7).getValues():[];
     let foundRow=0;
     for(let i=rows.length-1;i>=0;i--){
-      if(normalizeDate_(rows[i][1])===date && String(rows[i][2]).trim()===nisn){foundRow=i+2;break;}
+      if(normalizeDate_(rows[i][0])===date && String(rows[i][1]).trim()===nisn){foundRow=i+2;break;}
     }
-    const row=[now,date,nisn,name,'XI TKJ 1',status,clean_(p.keterangan)];
+    const row=[date,nisn,name,clean_(p.kelas)||'XI TKJ 1',status,Utilities.formatDate(now,'Asia/Jakarta','HH:mm:ss'),clean_(p.metode)||'MANUAL'];
     if(foundRow) sh.getRange(foundRow,1,1,7).setValues([row]);
     else sh.appendRow(row);
     SpreadsheetApp.flush();
@@ -109,7 +109,7 @@ function deleteManual_(p){
   const rows=sh.getRange(2,1,sh.getLastRow()-1,7).getValues();
   let deleted=0;
   for(let i=rows.length-1;i>=0;i--){
-    if(normalizeDate_(rows[i][1])===date&&String(rows[i][2]).trim()===nisn){sh.deleteRow(i+2);deleted++;}
+    if(normalizeDate_(rows[i][0])===date&&String(rows[i][1]).trim()===nisn){sh.deleteRow(i+2);deleted++;}
   }
   SpreadsheetApp.flush();
   return {ok:true,deleted};
@@ -160,7 +160,7 @@ function attendanceStatus_(p){
     if(msh&&msh.getLastRow()>1){
       const rows=msh.getRange(2,1,msh.getLastRow()-1,7).getValues();
       for(let i=rows.length-1;i>=0;i--){
-        if(normalizeDate_(rows[i][1])===date&&String(rows[i][2]).trim()===nisn){manualStatus=String(rows[i][5]||'');break;}
+        if(normalizeDate_(rows[i][0])===date&&String(rows[i][1]).trim()===nisn){manualStatus=String(rows[i][4]||'');break;}
       }
     }
     const fsh=ss.getSheetByName(FACE_SHEET);
@@ -185,12 +185,12 @@ function attendanceSummary_(p){
   const date=clean_(p.date);
   if(!date) return json_({ok:false,error:'Tanggal tidak ada.'});
   const ss=ss_();
-  const manualSheet=sheet_(MANUAL_SHEET,['Timestamp','Tanggal','NISN','Nama','Kelas','Status','Keterangan']);
+  const manualSheet=sheet_(MANUAL_SHEET,['Tanggal','NISN','Nama Siswa','Kelas','Keterangan','Waktu','Metode']);
   const faceSheet=sheet_(FACE_SHEET,['Timestamp','Tanggal','Waktu','NISN','Nama','Latitude','Longitude','Akurasi (meter)','Google Maps','Lokasi Alamat','File Drive']);
   const manual={};
   if(manualSheet.getLastRow()>1){
     const rows=manualSheet.getRange(2,1,manualSheet.getLastRow()-1,7).getValues();
-    rows.forEach(r=>{if(normalizeDate_(r[1])===date&&r[2]) manual[String(r[2])]={date:String(r[1]),nisn:String(r[2]),name:String(r[3]||''),status:String(r[5]||''),keterangan:String(r[6]||''),timestamp:r[0] instanceof Date?r[0].toISOString():String(r[0]||''),time:r[0] instanceof Date?Utilities.formatDate(r[0],Session.getScriptTimeZone(),'HH:mm'):''};});
+    rows.forEach(r=>{if(normalizeDate_(r[0])===date&&r[1]) manual[String(r[1])]={date:String(r[0]),nisn:String(r[1]),name:String(r[2]||''),status:String(r[4]||''),keterangan:String(r[4]||''),timestamp:String(r[5]||''),time:String(r[5]||'')};});
   }
   const face=[];
   if(faceSheet.getLastRow()>1){

@@ -1,27 +1,42 @@
-# Perbaikan Sambungan Absen Manual ke Google Sheets
+# FIX ABSEN MANUAL → GOOGLE SHEETS
 
-Versi ini memperbaiki sinkronisasi **Absen Manual H/I/A**.
+Versi ini memperbaiki dua hal penting:
 
-## Yang diperbaiki
-- H/I/A dikirim ke sheet `Absensi Manual`.
-- Status hanya menerima `H`, `I`, atau `A`.
-- Tombol **Hadir Semua** tidak lagi mengirim 36 data dalam satu URL GET yang bisa terlalu panjang; data dikirim satu per satu agar lebih stabil.
-- Klik ulang status yang sama tetap bisa membatalkan dan menghapus barisnya dari Sheet.
-- Endpoint `testConnection` tersedia untuk mengecek Web App.
+1. `testConnection` sekarang benar-benar membuka Google Sheets + Google Drive, jadi tidak lagi mengatakan “aktif” padahal izin belum ada.
+2. Ditambahkan `setup()` dan `appsscript.json` dengan OAuth scope Sheets + Drive untuk memicu authorization dengan benar.
 
-## Wajib deploy ulang Apps Script
-1. Buka project Google Apps Script yang terhubung ke Spreadsheet.
-2. Ganti isi `Code.gs` dengan file `google-apps-script/Code.gs` ini.
-3. **Deploy → Manage deployments → Edit**.
-4. Type: **Web app**.
-5. Execute as: **Me**.
-6. Who has access: **Anyone**.
-7. Deploy.
-8. Pastikan URL `/exec` sama dengan `DRIVE_UPLOAD_URL` di `drive-config.js`.
+## WAJIB dilakukan sekali
 
-## Cek koneksi
-Buka URL Web App dengan parameter `?action=testConnection&callback=test`. Jika benar, respons akan diawali `test({` dan berisi `"ok":true`.
+1. Buka Google Apps Script sebagai akun yang **memiliki/ditulisinkan edit** ke Spreadsheet dan folder Drive.
+2. Ganti `Code.gs` dengan file ini.
+3. Pastikan `appsscript.json` ikut dibuat/diganti.
+4. Di editor Apps Script pilih fungsi **`setup`** lalu klik **Run**.
+5. Saat muncul “Authorization required”, pilih akun pemilik → **Allow**.
+6. Pastikan `setup()` selesai tanpa error.
+7. Deploy → Manage deployments → Edit deployment Web App.
+8. **Execute as: Me**.
+9. **Who has access: Anyone**.
+10. Deploy versi terbaru.
 
-Setelah itu buka website, masuk **Admin → Absensi Kelas**, lalu pilih H/I/A. Data akan dibuat/diperbarui di sheet **Absensi Manual** dengan kolom:
+## Tes
 
+Buka URL Web App:
+
+`.../exec?action=testConnection&callback=test`
+
+Jika berhasil respons harus berisi:
+
+`"ok":true`
+
+Jika gagal, respons sekarang akan menjelaskan apakah masalahnya izin Spreadsheet atau Drive.
+
+## Sheet
+
+`ABSENSI`:
 `Timestamp | Tanggal | NISN | Nama | Kelas | Status | Keterangan`
+
+Status yang diterima: `H`, `I`, `A`.
+
+
+## Barcode Absensi
+Frontend kini menyediakan Barcode/QR NISN per siswa di folder `BARCODE SISWA/`. Scan dilakukan khusus dari Admin Control Panel dan menyimpan status H ke `ABSENSI` melalui action `saveManualAttendance` yang sudah tersedia.
