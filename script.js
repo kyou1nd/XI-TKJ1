@@ -892,13 +892,23 @@ function saveFaceAttendanceLocal(dateKey,data){
 function faceSession(){
  try{return JSON.parse(sessionStorage.getItem('xi-account-session')||'null')}catch{return null}
 }
-function compressFaceImage(dataUrl,maxSide=720,quality=.78){
- return new Promise(resolve=>{
+function compressFaceImage(dataUrl,maxSide=3840,quality=.92){
+ return new Promise((resolve,reject)=>{
   const img=new Image();
   img.onload=()=>{
-   const scale=Math.min(1,maxSide/Math.max(img.width,img.height)),w=Math.max(1,Math.round(img.width*scale)),h=Math.max(1,Math.round(img.height*scale));
-   const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);resolve(c.toDataURL('image/jpeg',quality));
+   try{
+    // Target 4K: 3840 px on the longest side. Upscale smaller originals when needed.
+    const scale=maxSide/Math.max(img.width,img.height);
+    const w=Math.max(1,Math.round(img.width*scale)),h=Math.max(1,Math.round(img.height*scale));
+    const c=document.createElement('canvas');c.width=w;c.height=h;
+    const ctx=c.getContext('2d',{alpha:false});
+    ctx.imageSmoothingEnabled=true;
+    ctx.imageSmoothingQuality='high';
+    ctx.drawImage(img,0,0,w,h);
+    resolve(c.toDataURL('image/jpeg',quality));
+   }catch(e){reject(e)}
   };
+  img.onerror=()=>reject(new Error('Foto gagal diproses'));
   img.src=dataUrl;
  });
 }
@@ -982,7 +992,7 @@ function addAttendanceWatermark(dataUrl,record){
     ctx.fillText(dateLine,x+pad,ty+1);
     ctx.shadowColor='transparent';
 
-    resolve(c.toDataURL('image/jpeg',.92));
+    resolve(c.toDataURL('image/jpeg',.95));
    }catch(e){reject(e)}
   };
   img.onerror=()=>reject(new Error('Foto gagal diproses'));
@@ -1076,7 +1086,7 @@ function stopFaceCamera(){if(faceStream){faceStream.getTracks().forEach(t=>t.sto
 async function startFaceCamera(){
  if(!navigator.mediaDevices?.getUserMedia){setFaceStatus('Kamera tidak didukung. Gunakan tombol Pilih Foto.');return}
  try{
-  faceStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:960}},audio:false});
+  faceStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:3840},height:{ideal:2160}},audio:false});
   const v=document.getElementById('faceCameraVideo');v.srcObject=faceStream;
   try{await v.play()}catch(_){}
   document.getElementById('faceCameraPlaceholder').style.display='none';document.getElementById('faceCameraCapture').disabled=false;
@@ -1085,7 +1095,7 @@ async function startFaceCamera(){
 }
 async function handleFaceFile(file){
  if(!file||!file.type.startsWith('image/')){toast('Pilih file gambar.');return}
- if(file.size>10*1024*1024){toast('Foto maksimal 10 MB.');return}
+ if(file.size>15*1024*1024){toast('Foto maksimal 15 MB.');return}
  const reader=new FileReader();reader.onload=async()=>{faceCapturedData=await compressFaceImage(reader.result);showFacePreview(faceCapturedData,'Foto dari perangkat');setFaceStatus('Foto siap. Periksa dulu lalu kirim absensi.','ready')};reader.readAsDataURL(file);
 }
 function captureFace(){
@@ -1140,9 +1150,20 @@ function syncManualAttendanceToSheets(record){
  return attendanceJsonp('saveManualAttendance',record);
 }
 function syncManualAttendanceBatchToSheets(records){
- const url=String(window.MANUAL_ATTENDANCE_URL||'').trim();
+ const url=String(window.MANUAL_ATTENDANCE_URL||window.DRIVE_UPLOAD_URL||'').trim();
  if(!url)return Promise.reject(new Error('URL Apps Script kosong'));
- return attendanceJsonp('saveManualAttendanceBatch',{records:JSON.stringify(records)});
+ // Jangan kirim puluhan record dalam satu GET: URL Google Apps Script punya batas panjang.
+ // Simpan satu per satu lewat JSONP agar setiap status benar-benar masuk ke Sheets.
+ const list=Array.isArray(records)?records.filter(Boolean):[];
+ if(!list.length)return Promise.resolve({ok:true,count:0,failed:[]});
+ let saved=0, failed=[];
+ return list.reduce((chain,record)=>chain.then(()=>attendanceJsonp('saveManualAttendance',record)
+   .then(()=>{saved++})
+   .catch(err=>{failed.push({nisn:record.nisn,error:err.message})})
+ ),Promise.resolve()).then(()=>({ok:failed.length===0,count:saved,failed}));
+}
+function testManualAttendanceConnection(){
+ return attendanceJsonp('testConnection');
 }
 function getLiveFaceLocation(){
  return new Promise((resolve,reject)=>{
