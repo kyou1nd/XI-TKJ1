@@ -1271,8 +1271,9 @@ async function submitFaceAttendance(){
  const mapsUrl=loc?'https://www.google.com/maps?q='+encodeURIComponent(loc.latitude+','+loc.longitude):'';
  let locationText='';
  if(loc){
-  setFaceStatus('Membaca lokasi untuk metadata absensi...','ready');
-  locationText=await getReadableLocation(loc.latitude,loc.longitude);
+  // Jangan menunggu reverse-geocoding. GPS sudah cukup sebagai metadata.
+  // Alamat jalan hanya pelengkap dan tidak boleh memblokir upload foto.
+  locationText='Lokasi GPS tersimpan';
  }
 
  const record={
