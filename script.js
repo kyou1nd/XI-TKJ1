@@ -1129,39 +1129,120 @@ function testManualAttendanceConnection(){
 }
 function getLiveFaceLocation(){
  return new Promise((resolve,reject)=>{
-  if(!navigator.geolocation)return reject(new Error('Browser tidak mendukung lokasi.'));
-  navigator.geolocation.getCurrentPosition(pos=>resolve({
-   latitude:pos.coords.latitude,longitude:pos.coords.longitude,
-   accuracy:Math.round(pos.coords.accuracy||0)
-  }),err=>reject(err),{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+  if(!navigator.geolocation){
+   reject(new Error('Browser tidak mendukung lokasi.'));
+   return;
+  }
+
+  let finished=false;
+  const finish=(fn,value)=>{
+   if(finished)return;
+   finished=true;
+   fn(value);
+  };
+
+  const timer=setTimeout(()=>{
+   finish(reject,new Error('GPS timeout'));
+  },8000);
+
+  try{
+   navigator.geolocation.getCurrentPosition(
+    pos=>{
+     clearTimeout(timer);
+     finish(resolve,{
+      latitude:pos.coords.latitude,
+      longitude:pos.coords.longitude,
+      accuracy:Math.round(pos.coords.accuracy||0)
+     });
+    },
+    err=>{
+     clearTimeout(timer);
+     finish(reject,err||new Error('Lokasi tidak tersedia.'));
+    },
+    {
+     enableHighAccuracy:true,
+     timeout:7500,
+     maximumAge:30000
+    }
+   );
+  }catch(e){
+   clearTimeout(timer);
+   finish(reject,e);
+  }
  });
 }
 
 async function getReadableLocation(lat,lon){
  const fallback='Lokasi terdeteksi';
+
+ /*
+  * Reverse geocoding hanya untuk TEKS metadata.
+  * Kalau Nominatim lambat/gagal, jangan pernah
+  * membuat proses absensi ikut berhenti.
+  */
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),5000);
+
  try{
   const url='https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon);
-  const res=await fetch(url,{headers:{Accept:'application/json'}});
+
+  const res=await fetch(url,{
+   headers:{Accept:'application/json'},
+   signal:controller.signal
+  });
+
   if(!res.ok)throw new Error('reverse geocode gagal');
-  const d=await res.json(),a=d.address||{};
+
+  const d=await res.json();
+  const a=d.address||{};
   const road=a.road||a.pedestrian||a.residential||a.neighbourhood||'';
   const village=a.village||a.hamlet||a.suburb||a.neighbourhood||'';
   const district=a.city_district||a.district||a.municipality||'';
   const regency=a.regency||a.county||a.city||a.town||'';
   const state=a.state||a.province||'';
+
   const place=[];
   if(road)place.push(road);
   if(village)place.push(village);
-  if(district)place.push('Kec. '+district.replace(/^Kecamatan\s+/i,''));
-  if(regency){
-   const prefix=/^(Kota|Kabupaten|Kab\.|Kab\s)/i.test(regency)?'':'Kab. ';
-   place.push(prefix+regency.replace(/^Kabupaten\s+/i,'').replace(/^Kab\.\s*/i,''));
+
+  if(district){
+   place.push(
+    'Kec. '+
+    district.replace(/^Kecamatan\s+/i,'')
+   );
   }
+
+  if(regency){
+   const prefix=/^(Kota|Kabupaten|Kab\.|Kab\s)/i.test(regency)
+    ?''
+    :'Kab. ';
+
+   place.push(
+    prefix+
+    regency
+     .replace(/^Kabupaten\s+/i,'')
+     .replace(/^Kab\.\s*/i,'')
+   );
+  }
+
   if(state)place.push(state);
-  const unique=place.filter((v,i,arr)=>v&&arr.indexOf(v)===i);
-  return unique.join(', ')||d.display_name||fallback;
- }catch(e){return fallback}
+
+  const unique=
+   place.filter(
+    (v,i,arr)=>v&&arr.indexOf(v)===i
+   );
+
+  return unique.join(', ')||
+   d.display_name||
+   fallback;
+
+ }catch(e){
+  return fallback;
+ }finally{
+  clearTimeout(timer);
+ }
 }
+
 async function submitFaceAttendance(){
  const u=faceSession();
  if(!u||u.role!=='student')return toast('Login sebagai siswa terlebih dahulu.');
@@ -1261,16 +1342,60 @@ async function uploadFaceToDrive(record){
 }
 function driveJsonp(dateKey){
  return new Promise((resolve,reject)=>{
-  if(!DRIVE_UPLOAD_URL)return reject(new Error('Drive URL kosong'));
-  const cb='xiDriveCB_'+Date.now()+'_'+Math.floor(Math.random()*10000),script=document.createElement('script');
-  const timer=setTimeout(()=>{cleanup();reject(new Error('timeout'))},12000);
-  function cleanup(){clearTimeout(timer);delete window[cb];script.remove()}
-  window[cb]=data=>{cleanup();resolve(data)};
-  script.onerror=()=>{cleanup();reject(new Error('drive error'))};
-  script.src=DRIVE_UPLOAD_URL+(DRIVE_UPLOAD_URL.includes('?')?'&':'?')+'action=listFaceAttendance&date='+encodeURIComponent(dateKey)+'&callback='+encodeURIComponent(cb);
+  if(!DRIVE_UPLOAD_URL){
+   reject(new Error('Drive URL kosong'));
+   return;
+  }
+
+  const cb='xiDriveCB_'+Date.now()+'_'+Math.floor(Math.random()*10000);
+  const script=document.createElement('script');
+
+  const timer=setTimeout(()=>{
+   cleanup();
+   reject(new Error('timeout'));
+  },12000);
+
+  function cleanup(){
+   clearTimeout(timer);
+   try{delete window[cb]}catch(e){}
+   try{script.remove()}catch(e){}
+  }
+
+  window[cb]=data=>{
+   cleanup();
+
+   /*
+    * Apps Script V19 mengembalikan:
+    * {ok:true,data:[...]}
+    *
+    * Frontend lama mencari "records".
+    * Normalisasi di sini supaya semua bagian
+    * website tetap bisa memakai records.
+    */
+   if(data && Array.isArray(data.data) && !Array.isArray(data.records)){
+    data.records=data.data;
+   }
+
+   resolve(data);
+  };
+
+  script.onerror=()=>{
+   cleanup();
+   reject(new Error('drive error'));
+  };
+
+  script.src=
+   DRIVE_UPLOAD_URL+
+   (DRIVE_UPLOAD_URL.includes('?')?'&':'?')+
+   'action=listFaceAttendance&date='+
+   encodeURIComponent(dateKey)+
+   '&callback='+
+   encodeURIComponent(cb);
+
   document.body.appendChild(script);
  });
 }
+
 async function loadDriveFaceAttendance(dateKey,force=false,checkNisn=''){
  try{
   const res=await driveJsonp(dateKey);if(!res||!Array.isArray(res.records))return;
