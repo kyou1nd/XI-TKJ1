@@ -19,7 +19,7 @@ const SPREADSHEET_ID = '1cNhhSqJkimc2cwoT2djXZzoCZX1bl2gtcmVtcNH-yew';
 const MANUAL_SHEET = 'ABSENSI';
 const FACE_SHEET = 'Absensi Foto Muka';
 
-const BACKEND_VERSION = 'XI-TKJ1-BARCODE-FACE-CLEAN-PHOTO-2026-09-01';
+const BACKEND_VERSION = 'XI-TKJ1-BARCODE-FACE-UPLOAD-V17-2026-09-01';
 const TZ = 'Asia/Jakarta';
 
 
@@ -769,6 +769,15 @@ function saveFace_(p) {
       ok: false,
       error:
         'Foto tidak diterima server. imageData kosong.'
+    });
+  }
+
+  const rawImage = String(p.imageData || '');
+  if (rawImage.length > 1400000) {
+    return json_({
+      ok: false,
+      error:
+        'Data foto terlalu besar. Kompres foto di browser terlebih dahulu (target di bawah 1 MB).'
     });
   }
 

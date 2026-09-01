@@ -40,3 +40,6 @@ Status yang diterima: `H`, `I`, `A`.
 
 ## Barcode Absensi
 Frontend kini menyediakan Barcode/QR NISN per siswa di folder `BARCODE SISWA/`. Scan dilakukan khusus dari Admin Control Panel dan menyimpan status H ke `ABSENSI` melalui action `saveManualAttendance` yang sudah tersedia.
+
+
+V17 upload foto: foto dikompresi maksimal sekitar 1280px/600KB, dikirim via POST, lalu diverifikasi kembali melalui daftar foto Drive. Jika belum muncul, frontend menampilkan error deployment Apps Script.
