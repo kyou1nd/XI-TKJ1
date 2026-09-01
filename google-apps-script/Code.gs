@@ -19,7 +19,7 @@ const SPREADSHEET_ID = '1cNhhSqJkimc2cwoT2djXZzoCZX1bl2gtcmVtcNH-yew';
 const MANUAL_SHEET = 'ABSENSI';
 const FACE_SHEET = 'Absensi Foto Muka';
 
-const BACKEND_VERSION = 'XI-TKJ1-BARCODE-FACE-UPLOAD-V17-2026-09-01';
+const BACKEND_VERSION = 'XI-TKJ1-BARCODE-FACE-UPLOAD-V18-FIX-2026-09-01';
 const TZ = 'Asia/Jakarta';
 
 
@@ -382,10 +382,13 @@ function findStudent_(nisn) {
   const ss = ss_();
   const siswa = ss.getSheetByName('SISWA');
 
+  /*
+   * PATCH: kalau sheet SISWA belum dibuat, jangan lempar error.
+   * Barcode tetap harus bisa jalan pakai data dari NISN/nama yang
+   * sudah dikirim browser (lihat saveBarcodeAttendance_).
+   */
   if (!siswa) {
-    throw new Error(
-      'Sheet SISWA tidak ditemukan.'
-    );
+    return null;
   }
 
   if (siswa.getLastRow() < 2) {
@@ -411,7 +414,19 @@ function findStudent_(nisn) {
     const rowNisn =
       String(values[i][0] || '').trim();
 
-    if (rowNisn === nisn) {
+    /*
+     * PATCH: kalau kolom NISN di sheet diformat sebagai angka,
+     * Google Sheets otomatis membuang angka nol di depan
+     * (mis. "0097925673" jadi "97925673"). Bandingkan juga
+     * versi tanpa nol di depan supaya tetap cocok.
+     */
+    const rowNisnNoZero = rowNisn.replace(/^0+/, '');
+    const nisnNoZero = nisn.replace(/^0+/, '');
+
+    if (
+      rowNisn === nisn ||
+      (rowNisnNoZero && rowNisnNoZero === nisnNoZero)
+    ) {
 
       return {
         nisn: rowNisn,
@@ -460,21 +475,38 @@ function saveBarcodeAttendance_(p) {
 
   } catch (err) {
 
-    return {
-      ok: false,
-      error: err.message || String(err)
-    };
+    student = null;
   }
 
 
+  /*
+   * PATCH: kalau sheet SISWA tidak ada / NISN belum terdaftar
+   * di sana, JANGAN gagalkan absensi. Barcode siswa (dibuat dari
+   * data kelas yang sama dengan absen manual) sudah membawa nama
+   * & kelas dari browser — pakai itu sebagai fallback, sama
+   * seperti cara kerja absen manual yang sudah pasti tersimpan.
+   */
+
   if (!student) {
 
-    return {
-      ok: false,
-      error:
-        'NISN ' +
-        nisn +
-        ' tidak ditemukan di sheet SISWA.'
+    const fallbackName =
+      clean_(p.name);
+
+    if (!fallbackName) {
+
+      return {
+        ok: false,
+        error:
+          'NISN ' +
+          nisn +
+          ' tidak ditemukan di sheet SISWA, dan nama siswa tidak dikirim dari browser.'
+      };
+    }
+
+    student = {
+      nisn: nisn,
+      name: fallbackName,
+      kelas: clean_(p.kelas) || 'XI TKJ 1'
     };
   }
 
