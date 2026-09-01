@@ -623,7 +623,24 @@ function renderAccount(){
  function syncAccountBio(){const u=getSession();if(!u||u.role!=='student')return;const prof=getProfile(u);const bioEl=document.getElementById('accountBio'),input=document.getElementById('accountBioInput');if(bioEl)bioEl.textContent=prof.bio||'Belum ada bio.';if(input)input.value=prof.bio||'';}
  function guestTop(){syncAdminMenu();updateMobileAccount(null);if(topPill){topPill.querySelector('b').textContent='Account';topPill.title='Account / Login';const topImg=document.getElementById('topAvatarImg'),topFallback=document.getElementById('topAvatarFallback');if(topImg)topImg.hidden=true;if(topFallback){topFallback.hidden=false;topFallback.textContent='AC'}}}
  document.querySelectorAll('[data-open-account]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();mobileMenu?.classList.remove('show');openAccount()}));topPill?.addEventListener('click',openAccount);document.getElementById('accountModalClose')?.addEventListener('click',closeAccount);modal?.addEventListener('click',e=>{if(e.target===modal)closeAccount()});
- document.querySelectorAll('[data-auth-modal-view]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-auth-modal-view]').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.modal-login-view').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(b.dataset.authModalView==='student'?'studentModalAuth':'adminModalAuth')?.classList.add('active')}));
+ document.querySelectorAll('[data-auth-modal-view]').forEach(b=>b.addEventListener('click',()=>{
+   const shell=document.getElementById('accountGuestView');
+   const mode=b.dataset.authModalView==='admin'?'admin':'student';
+   const current=shell?.dataset.loginMode||'student';
+   if(!shell||current===mode)return;
+   shell.classList.add('login-transitioning');
+   document.querySelectorAll('[data-auth-modal-view]').forEach(x=>x.classList.toggle('active',x===b));
+   shell.classList.toggle('admin-mode',mode==='admin');
+   shell.classList.toggle('student-mode',mode==='student');
+   shell.dataset.loginMode=mode;
+   document.documentElement.style.setProperty('--login-mode',mode);
+   // Change form near the middle of the physical exchange, not before it starts.
+   window.setTimeout(()=>{
+     document.querySelectorAll('.modal-login-view').forEach(x=>x.classList.remove('active'));
+     document.getElementById(mode==='student'?'studentModalAuth':'adminModalAuth')?.classList.add('active');
+   },460);
+   window.setTimeout(()=>shell.classList.remove('login-transitioning'),980);
+ }));
  document.getElementById('studentLoginForm')?.addEventListener('submit',e=>{e.preventDefault();const nisn=document.getElementById('studentUsername').value.trim();const pw=document.getElementById('studentPassword').value;const err=document.getElementById('studentLoginError');const u=ACCOUNTS.find(x=>x.nisn===nisn);const stored=getPasswords();if(!u){err.textContent='NISN tidak ditemukan di data XI TKJ 1.';return}if((stored[u.nisn]||u.defaultPassword)!==pw){err.textContent='Password salah.';return}err.textContent='';setSession({role:'student',key:u.nisn,name:u.name,nisn:u.nisn,first:u.first});document.getElementById('studentLoginForm').reset();renderAccount();closeAccount();welcomeToast('Welcome Di Website XI TKJ 1 '+u.name)});
  document.getElementById('adminLoginForm')?.addEventListener('submit',e=>{e.preventDefault();const un=document.getElementById('adminUsername').value.trim(),pw=document.getElementById('adminPassword').value,err=document.getElementById('adminLoginError');if(un!==ADMIN.username||pw!==ADMIN.password){err.textContent='Username atau password admin salah.';return}err.textContent='';setSession({role:'admin',key:'admin',name:ADMIN.name});document.getElementById('adminLoginForm').reset();renderAccount();closeAccount();welcomeToast('Welcome Di Website XI TKJ 1 '+ADMIN.name)});
  document.getElementById('accountLogout')?.addEventListener('click',()=>{sessionStorage.removeItem(sessionKey);syncAdminMenu();if(typeof syncFaceAttendanceMenu==='function')syncFaceAttendanceMenu();window.dispatchEvent(new CustomEvent('xi-session-changed'));renderAccount();guestTop();closeAccount();closeAdminPortal();toast('Sesi ditutup.')});document.getElementById('adminLogout')?.addEventListener('click',()=>{sessionStorage.removeItem(sessionKey);syncAdminMenu();if(typeof syncFaceAttendanceMenu==='function')syncFaceAttendanceMenu();window.dispatchEvent(new CustomEvent('xi-session-changed'));closeAdminPortal();renderAccount();guestTop();toast('Sesi admin ditutup.')});
@@ -1599,4 +1616,34 @@ document.getElementById('facePhotoViewerImage')?.addEventListener('click',e=>{
       closeStudentBarcode();
     }
   });
+})();
+
+
+/* ===== PREMIUM LOGIN MODE SWITCH ===== */
+(()=>{
+ const shell=document.getElementById('accountGuestView');
+ if(!shell)return;
+ const buttons=[...document.querySelectorAll('[data-auth-modal-view]')];
+ const applyMode=(mode)=>{
+   shell.classList.toggle('admin-mode',mode==='admin');
+   shell.classList.toggle('student-mode',mode!=='admin');
+   shell.dataset.loginMode=mode;
+   document.documentElement.style.setProperty('--login-mode',mode);
+   buttons.forEach(btn=>btn.classList.toggle('active',btn.dataset.authModalView===mode));
+ };
+ applyMode('student');
+})();
+
+/* ===== DASHBOARD CLOCK — ALWAYS ASIA/JAKARTA ===== */
+(()=>{
+ const update=()=>{
+   const now=new Date();
+   const opts={timeZone:'Asia/Jakarta',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false};
+   const dateOpts={timeZone:'Asia/Jakarta',weekday:'long',day:'2-digit',month:'long',year:'numeric'};
+   const time=new Intl.DateTimeFormat('id-ID',opts).format(now);
+   const date=new Intl.DateTimeFormat('id-ID',dateOpts).format(now);
+   ['dashboardTime','liveClock'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=time});
+   const d=document.getElementById('dashboardDate');if(d)d.textContent=date;
+ };
+ update();setInterval(update,1000);
 })();

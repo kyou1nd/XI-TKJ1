@@ -1163,3 +1163,651 @@ body.dark .attendance-pending-section{background:linear-gradient(145deg,rgba(255
 .admin-scanner-note{margin-top:14px;padding:12px;border-radius:14px;background:rgba(64,85,255,.05);color:var(--muted);font-size:10px;line-height:1.5}.admin-scanner-note span{color:var(--primary);font-weight:900;margin-right:6px}
 body.dark .student-barcode-image-wrap{box-shadow:0 15px 35px rgba(0,0,0,.3)}body.dark .scanner-placeholder{background:radial-gradient(circle at center,rgba(64,85,255,.22),rgba(8,13,29,.98) 70%)}
 @media(max-width:720px){.admin-scanner-layout{grid-template-columns:1fr}.admin-barcode-box,.student-barcode-box{padding:20px;border-radius:24px}.admin-barcode-head{display:block}.admin-scanner-live{margin-top:12px}.scanner-frame{aspect-ratio:4/3}.student-barcode-image-wrap{min-height:230px}.attendance-head-actions{justify-content:flex-start}.attendance-head-actions .admin-scan-trigger{width:100%}}
+
+
+/* =========================================================
+   XI TKJ 1 — PREMIUM VISUAL PASS
+   Login transition + knowledge + tools + dashboard + tasks
+   ========================================================= */
+:root{
+  --premium-glow:rgba(91,92,255,.28);
+  --premium-cyan:rgba(0,195,255,.16);
+  --premium-purple:rgba(132,73,255,.18);
+}
+
+/* Login: smooth student/admin slide */
+.login-shell{position:relative;isolation:isolate;overflow:hidden;transition:background .6s ease}
+.login-showcase,.login-panel{transition:transform .72s cubic-bezier(.22,.8,.22,1),opacity .45s ease,background .55s ease}
+.login-showcase{z-index:2}
+.login-panel{z-index:1}
+.login-shell.admin-mode .login-showcase{order:2;border-right:0;border-left:1px solid var(--border);background:radial-gradient(circle at 78% 22%,rgba(89,99,255,.26),transparent 38%),radial-gradient(circle at 20% 78%,rgba(0,190,255,.10),transparent 32%),linear-gradient(145deg,#0a0f22,#070a14)}
+.login-shell.admin-mode .login-panel{order:1}
+.login-shell.admin-mode .login-showcase{animation:loginSlideRight .72s cubic-bezier(.22,.8,.22,1)}
+.login-shell.student-mode .login-showcase{animation:loginSlideLeft .72s cubic-bezier(.22,.8,.22,1)}
+@keyframes loginSlideRight{0%{transform:translateX(-24px);opacity:.72}100%{transform:translateX(0);opacity:1}}
+@keyframes loginSlideLeft{0%{transform:translateX(24px);opacity:.72}100%{transform:translateX(0);opacity:1}}
+.login-showcase-title{display:none}
+.login-shell.student-mode .student-title,.login-shell.admin-mode .admin-title{display:block;animation:loginTextIn .65s .08s both cubic-bezier(.2,.8,.2,1)}
+@keyframes loginTextIn{from{opacity:0;transform:translateY(18px);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
+.student-copy,.admin-copy,.student-panel-title,.admin-panel-title,.student-panel-copy,.admin-panel-copy{display:none}
+.login-shell.student-mode .student-copy,.login-shell.admin-mode .admin-copy,.login-shell.student-mode .student-panel-title,.login-shell.admin-mode .admin-panel-title,.login-shell.student-mode .student-panel-copy,.login-shell.admin-mode .admin-panel-copy{display:block}
+.login-showcase-copy h2{font-weight:850;text-wrap:balance}
+.login-showcase-copy h2 strong{background:linear-gradient(90deg,var(--primary),#8c62ff 55%,#20cfff);background-size:180% auto;animation:loginGradient 5s linear infinite;-webkit-background-clip:text;background-clip:text;color:transparent}
+@keyframes loginGradient{to{background-position:180% center}}
+.login-showcase-copy p{max-width:420px}
+.login-shell.admin-mode .login-private{color:#9aa5ff;border-color:rgba(100,110,255,.22)}
+.login-shell.admin-mode .login-orb-a{right:-40px;left:auto;top:100px;width:280px;height:280px;background:rgba(90,82,255,.16);box-shadow:0 0 120px rgba(90,82,255,.24)}
+.login-shell.admin-mode .login-orb-b{left:auto;right:-50px;bottom:80px;background:rgba(0,205,255,.10)}
+.auth-choice-btn{transition:transform .25s ease,border-color .25s ease,background .25s ease,box-shadow .25s ease}
+.auth-choice-btn:hover{transform:translateY(-3px)}
+.auth-choice-btn.active{transform:translateY(-2px)}
+.modal-login-view{animation:authViewIn .5s cubic-bezier(.2,.8,.2,1)}
+@keyframes authViewIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+.login-input-wrap{transition:transform .2s ease,border-color .25s ease,box-shadow .25s ease}
+.login-input-wrap:focus-within{transform:translateY(-1px)}
+.auth-submit{position:relative;overflow:hidden;transition:transform .25s ease,box-shadow .25s ease!important}
+.auth-submit:after{content:"";position:absolute;inset:0;transform:translateX(-110%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);transition:transform .65s ease}
+.auth-submit:hover{transform:translateY(-2px);box-shadow:0 18px 34px rgba(70,80,255,.28)!important}
+.auth-submit:hover:after{transform:translateX(110%)}
+
+/* Section headers */
+#knowledge .section-heading,#tools .section-heading,#tasks .section-heading{margin-bottom:24px}
+#knowledge .section-heading h2,#tools .section-heading h2,#tasks .section-heading h2{font-size:clamp(30px,4vw,46px);letter-spacing:-.055em}
+#knowledge .section-heading h2 span,#tools .section-heading h2 span,#tasks .section-heading h2 span{background:linear-gradient(135deg,var(--primary),#8c5cff 65%,#19cfff);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* Materi Belajar */
+#knowledge{position:relative}
+#knowledge:before,#tools:before,#tasks:before{content:"";position:absolute;pointer-events:none;inset:0 auto auto 10%;width:260px;height:220px;border-radius:50%;background:var(--premium-glow);filter:blur(90px);opacity:.45}
+.knowledge-grid{gap:17px}
+.knowledge-card{min-height:210px;display:flex;flex-direction:column;padding:23px!important;border-radius:24px!important;background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.012))!important;transition:transform .4s cubic-bezier(.2,.8,.2,1),border-color .3s,box-shadow .4s,background .4s;overflow:hidden}
+.knowledge-card:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 100% 0,rgba(91,92,255,.12),transparent 42%);opacity:0;transition:opacity .35s}
+.knowledge-card:hover{transform:translateY(-7px);border-color:rgba(110,120,255,.30);box-shadow:0 24px 60px rgba(45,55,130,.18)}
+.knowledge-card:hover:before{opacity:1}
+.knowledge-card .knowledge-icon{width:52px;height:52px;display:grid;place-items:center;font-size:27px;border-radius:17px;background:linear-gradient(145deg,rgba(80,95,255,.16),rgba(80,190,255,.06));border:1px solid rgba(110,120,255,.12);box-shadow:inset 0 1px rgba(255,255,255,.05);position:relative;z-index:1}
+.knowledge-card .tag{margin-top:16px;position:relative;z-index:1}
+.knowledge-card h3,.knowledge-card p,.knowledge-card .mini-btn{position:relative;z-index:1}
+.knowledge-card h3{font-size:16px;letter-spacing:-.02em}
+.knowledge-card p{font-size:11px;line-height:1.65}
+.knowledge-card .mini-btn{margin-top:auto;width:max-content}
+.feature-toolbar{padding:9px;border:1px solid var(--border);border-radius:18px;background:rgba(100,110,160,.025);backdrop-filter:blur(14px);box-shadow:0 12px 35px rgba(20,30,80,.05)}
+.feature-toolbar .search-box{border:1px solid var(--border);border-radius:13px;background:var(--card);height:43px}
+.feature-toolbar select{border-radius:13px!important;background:var(--card)!important;border:1px solid var(--border)!important}
+
+/* Tools */
+#tools{position:relative}
+.tools-grid{gap:14px}
+.tool-card{position:relative;overflow:hidden;min-height:150px!important;padding:22px!important;border-radius:22px!important;background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.01))!important;transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s,border-color .3s!important}
+.tool-card:before{content:"";position:absolute;width:120px;height:120px;right:-55px;top:-55px;border-radius:50%;background:var(--premium-purple);filter:blur(15px);transition:transform .5s ease}
+.tool-card:hover{transform:translateY(-7px) scale(1.01)!important;border-color:rgba(105,115,255,.3)!important;box-shadow:0 22px 55px rgba(40,50,130,.17)!important}
+.tool-card:hover:before{transform:scale(1.5)}
+.tool-card span,.tool-card b,.tool-card small{position:relative;z-index:1}
+.tool-card span{width:48px;height:48px;display:grid!important;place-items:center;margin-bottom:18px!important;border-radius:15px;background:rgba(80,95,255,.10);font-size:24px!important}
+.tool-card b{font-size:12px}
+.tool-card small{font-size:9px;line-height:1.5}
+
+/* Dashboard */
+#dashboard-pro{position:relative}
+.dashboard-shell{border:1px solid rgba(100,110,255,.12)!important;border-radius:28px!important;background:linear-gradient(145deg,rgba(255,255,255,.022),rgba(255,255,255,.006))!important;box-shadow:0 30px 90px rgba(20,25,75,.12)!important}
+.dash-hero.premium-hero{position:relative;overflow:hidden;min-height:190px!important;border-radius:25px!important;background:radial-gradient(circle at 88% 20%,rgba(30,205,255,.30),transparent 30%),radial-gradient(circle at 18% 110%,rgba(95,70,255,.32),transparent 38%),linear-gradient(135deg,#263b98,#4d4de5 55%,#168fc0)!important;box-shadow:0 20px 55px rgba(45,70,180,.25)!important}
+.dash-hero.premium-hero:after{content:"";position:absolute;inset:auto -10% -70% 25%;height:180px;border-radius:50%;background:rgba(255,255,255,.10);filter:blur(30px)}
+.dash-hero h3{font-size:clamp(27px,4vw,38px)!important;letter-spacing:-.05em}
+.hero-clock{position:relative;z-index:2;min-width:185px;padding:18px 20px;border-radius:20px;background:rgba(5,15,50,.20);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(16px);box-shadow:inset 0 1px rgba(255,255,255,.10)}
+.hero-clock strong{font-variant-numeric:tabular-nums;text-shadow:0 0 25px rgba(255,255,255,.20)}
+.dash-stat-grid{gap:12px!important}
+.modern-stat{border-radius:18px!important;background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.01))!important;transition:transform .3s ease,border-color .3s ease,box-shadow .3s ease}
+.modern-stat:hover{transform:translateY(-4px);border-color:rgba(100,110,255,.24);box-shadow:0 16px 40px rgba(30,40,100,.12)}
+.stat-symbol{width:40px;height:40px;border-radius:13px;background:linear-gradient(145deg,rgba(80,95,255,.15),rgba(0,195,255,.07))}
+.modern-stat b{font-variant-numeric:tabular-nums}
+.dash-panel{border-radius:21px!important;background:linear-gradient(145deg,rgba(255,255,255,.03),rgba(255,255,255,.008))!important}
+.activity-item{transition:padding .25s ease,background .25s ease;border-radius:13px;padding-left:7px!important;padding-right:7px!important}
+.activity-item:hover{background:rgba(90,100,255,.045);padding-left:12px!important;padding-right:12px!important}
+.live-chip{box-shadow:0 0 0 5px rgba(77,230,155,.04)}
+.system-list>div{transition:padding .2s ease}
+.system-list>div:hover{padding-left:6px;padding-right:6px}
+
+/* Tasks */
+#tasks{position:relative}
+.task-grid{gap:17px}
+.task-card{min-height:190px;padding:22px!important;border-radius:23px!important;background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.008))!important;transition:transform .38s cubic-bezier(.2,.8,.2,1),box-shadow .35s,border-color .3s;overflow:hidden}
+.task-card:before{content:"";position:absolute;left:-30px;bottom:-50px;width:140px;height:140px;border-radius:50%;background:rgba(65,90,255,.10);filter:blur(25px);transition:transform .5s}
+.task-card:hover{transform:translateY(-7px);border-color:rgba(105,115,255,.30);box-shadow:0 25px 60px rgba(35,45,125,.17)}
+.task-card:hover:before{transform:scale(1.5)}
+.task-card h3{font-size:17px;letter-spacing:-.025em;position:relative}
+.task-card p{font-size:11px;line-height:1.65}
+.task-card .status{border:1px solid rgba(100,110,255,.13);backdrop-filter:blur(8px)}
+.task-meta{border-top:1px solid var(--border);padding-top:13px;font-size:9px}
+.task-actions .mini-btn{transition:transform .2s,border-color .2s,background .2s}
+.task-actions .mini-btn:hover{transform:translateY(-2px);background:rgba(90,100,255,.08);border-color:rgba(100,110,255,.28)}
+
+/* Scroll reveal */
+.knowledge-card,.tool-card,.task-card,.dash-panel,.modern-stat,.dash-hero{animation:premiumReveal .65s both;animation-timeline:view();animation-range:entry 0% cover 24%}
+@keyframes premiumReveal{from{opacity:.35;transform:translateY(24px) scale(.985)}to{opacity:1;transform:none}}
+@supports not (animation-timeline:view()){.knowledge-card,.tool-card,.task-card,.dash-panel,.modern-stat,.dash-hero{animation:none}}
+
+@media(max-width:800px){
+ .login-shell{display:flex!important;flex-direction:column!important}
+ .login-shell.admin-mode .login-showcase{order:2;border-left:0;border-top:1px solid var(--border)}
+ .login-shell.admin-mode .login-panel{order:1}
+ .login-showcase-copy h2{font-size:32px}
+ .login-panel{min-height:0}
+ .hero-clock{min-width:0}
+}
+@media(max-width:600px){
+ .feature-toolbar{padding:7px}
+ .knowledge-card,.task-card{min-height:185px}
+ .tool-card{min-height:135px!important}
+ .dash-hero.premium-hero{min-height:310px!important}
+}
+@media(prefers-reduced-motion:reduce){.login-showcase,.login-panel,.modal-login-view,.knowledge-card,.tool-card,.task-card,.dash-panel,.modern-stat,.dash-hero{animation:none!important;transition:none!important}}
+
+/* =========================================================
+   XI TKJ 1 — ULTRA PREMIUM MOTION PASS
+   Liquid login transition + cinematic cards + dashboard
+   ========================================================= */
+
+/* ---------- LIQUID LOGIN SWITCH ---------- */
+@media(min-width:801px){
+  .login-shell{
+    position:relative!important;
+    display:block!important;
+    min-height:650px!important;
+    overflow:hidden!important;
+    isolation:isolate;
+  }
+  .login-shell:before{
+    content:"";
+    position:absolute;
+    z-index:0;
+    top:-18%;
+    left:37%;
+    width:34%;
+    height:136%;
+    border-radius:50%;
+    background:radial-gradient(circle,rgba(92,83,255,.22),rgba(25,205,255,.08) 42%,transparent 72%);
+    filter:blur(34px);
+    opacity:.8;
+    transition:left .9s cubic-bezier(.76,0,.24,1),transform .9s cubic-bezier(.76,0,.24,1),opacity .5s ease;
+    pointer-events:none;
+  }
+  .login-shell:after{
+    content:"";
+    position:absolute;
+    z-index:5;
+    top:0;
+    bottom:0;
+    left:50%;
+    width:2px;
+    background:linear-gradient(180deg,transparent,rgba(125,137,255,.25),transparent);
+    opacity:.65;
+    transition:opacity .4s ease;
+    pointer-events:none;
+  }
+  .login-showcase,.login-panel{
+    position:absolute!important;
+    top:0;
+    bottom:0;
+    width:50%!important;
+    box-sizing:border-box!important;
+    transition:transform .95s cubic-bezier(.76,0,.24,1),filter .75s ease,opacity .75s ease!important;
+    will-change:transform;
+  }
+  .login-showcase{left:0;z-index:2!important;border-right:1px solid var(--border)!important;border-left:0!important;transform:translateX(0)!important}
+  .login-panel{right:0;z-index:1!important;transform:translateX(0)!important}
+
+  /* admin: both halves physically exchange places */
+  .login-shell.admin-mode .login-showcase{
+    transform:translateX(100%)!important;
+    border-right:0!important;
+    border-left:1px solid var(--border)!important;
+    filter:saturate(1.08);
+  }
+  .login-shell.admin-mode .login-panel{transform:translateX(-100%)!important}
+  .login-shell.admin-mode:before{left:29%;transform:rotate(180deg) scale(1.08)}
+  .login-shell.admin-mode:after{opacity:0}
+
+  .login-shell.student-mode .login-showcase{transform:translateX(0)!important}
+  .login-shell.student-mode .login-panel{transform:translateX(0)!important}
+
+  .login-showcase-copy,.login-panel-head,.auth-choice,.login-security-note,.modal-login-view,.login-foot{animation:none!important}
+  .login-shell.student-mode .login-showcase-copy{animation:liquidTextIn .8s .25s both!important}
+  .login-shell.admin-mode .login-showcase-copy{animation:liquidTextIn .8s .25s both!important}
+  .login-shell.student-mode .modal-login-view.active{animation:formFlowRight .7s .2s both!important}
+  .login-shell.admin-mode .modal-login-view.active{animation:formFlowLeft .7s .2s both!important}
+  @keyframes liquidTextIn{from{opacity:0;transform:translateX(-28px) scale(.97);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
+  @keyframes formFlowRight{from{opacity:0;transform:translateX(28px) scale(.98);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+  @keyframes formFlowLeft{from{opacity:0;transform:translateX(-28px) scale(.98);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+
+  .auth-choice-btn{overflow:hidden}
+  .auth-choice-btn:after{content:"";position:absolute;inset:-100% -40%;background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.10) 50%,transparent 60%);transform:translateX(-65%) rotate(8deg);transition:transform .7s ease;pointer-events:none}
+  .auth-choice-btn:hover:after,.auth-choice-btn.active:after{transform:translateX(65%) rotate(8deg)}
+}
+
+@media(max-width:800px){
+  .login-shell{position:relative!important;overflow:hidden!important}
+  .login-shell:before{content:"";position:absolute;z-index:0;width:260px;height:260px;border-radius:50%;left:50%;top:12%;transform:translateX(-50%);background:radial-gradient(circle,rgba(92,83,255,.20),transparent 68%);filter:blur(25px);pointer-events:none}
+  .login-showcase,.login-panel{position:relative!important;z-index:1!important;width:100%!important;transform:none!important;transition:transform .8s cubic-bezier(.76,0,.24,1),opacity .5s ease!important}
+  .login-shell.admin-mode .login-showcase{order:2;transform:translateY(8px)!important}
+  .login-shell.admin-mode .login-panel{order:1;transform:translateY(-8px)!important}
+  .login-shell.student-mode .login-showcase,.login-shell.student-mode .login-panel{transform:none!important}
+}
+
+/* ---------- CINEMATIC SECTION HEADERS ---------- */
+#knowledge,#tools,#tasks,#dashboard-pro{overflow:visible}
+#knowledge .section-heading,#tools .section-heading,#tasks .section-heading,#dashboard-pro .section-heading{position:relative}
+#knowledge .section-heading:after,#tools .section-heading:after,#tasks .section-heading:after,#dashboard-pro .section-heading:after{
+  content:"";display:block;width:72px;height:3px;margin-top:15px;border-radius:99px;
+  background:linear-gradient(90deg,var(--primary),#22d3ee,transparent);
+  box-shadow:0 0 18px rgba(80,100,255,.45);
+}
+#knowledge .section-heading p,#tools .section-heading p,#tasks .section-heading p,#dashboard-pro .section-heading p{opacity:.55;letter-spacing:3px}
+
+/* ---------- KNOWLEDGE BASE ---------- */
+#knowledge .knowledge-grid{counter-reset:material;perspective:1200px}
+#knowledge .knowledge-card{
+  counter-increment:material;
+  min-height:238px!important;
+  padding:25px!important;
+  border-radius:26px!important;
+  background:
+    radial-gradient(circle at 90% 8%,rgba(85,96,255,.12),transparent 28%),
+    linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.012))!important;
+  box-shadow:0 18px 50px rgba(15,25,70,.12),inset 0 1px rgba(255,255,255,.035)!important;
+  transform-style:preserve-3d;
+}
+#knowledge .knowledge-card:after{
+  content:counter(material,decimal-leading-zero);
+  position:absolute;right:19px;bottom:14px;font:800 34px/1 system-ui;color:rgba(130,140,255,.07);letter-spacing:-2px;pointer-events:none;
+}
+#knowledge .knowledge-card:before{
+  content:"";position:absolute;inset:-1px;background:linear-gradient(115deg,transparent 20%,rgba(120,130,255,.14) 48%,transparent 62%);transform:translateX(-120%);transition:transform .8s ease;opacity:1!important;pointer-events:none;
+}
+#knowledge .knowledge-card:hover:before{transform:translateX(120%)}
+#knowledge .knowledge-card:hover{transform:translateY(-10px) rotateX(2deg) rotateY(-1deg)!important;box-shadow:0 30px 75px rgba(45,55,145,.22),inset 0 1px rgba(255,255,255,.07)!important}
+#knowledge .knowledge-icon{width:58px!important;height:58px!important;border-radius:18px!important;font-size:29px!important;box-shadow:0 12px 28px rgba(70,85,255,.13)!important;transition:transform .45s cubic-bezier(.2,.8,.2,1),box-shadow .45s ease!important}
+#knowledge .knowledge-card:hover .knowledge-icon{transform:translateZ(18px) rotate(-5deg) scale(1.08);box-shadow:0 18px 36px rgba(70,85,255,.22)!important}
+#knowledge .knowledge-card h3{font-size:17px!important;margin-top:16px!important}
+#knowledge .knowledge-card p{max-width:90%;min-height:38px}
+#knowledge .knowledge-card .mini-btn{position:relative;overflow:hidden;padding:9px 12px;border-radius:11px;background:rgba(80,95,255,.045);transition:.3s ease}
+#knowledge .knowledge-card .mini-btn:hover{transform:translateX(4px);background:rgba(80,95,255,.11)}
+
+/* ---------- TECHNOLOGY TOOLBOX ---------- */
+#tools .tools-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;perspective:1200px}
+#tools .tool-card{
+  min-height:172px!important;padding:23px!important;border-radius:25px!important;
+  background:linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.012))!important;
+  box-shadow:0 18px 48px rgba(15,25,70,.11),inset 0 1px rgba(255,255,255,.035)!important;
+  transform-style:preserve-3d;
+}
+#tools .tool-card:before{width:170px;height:170px;right:-85px;top:-85px;filter:blur(28px);opacity:.7;transition:transform .65s ease,opacity .4s}
+#tools .tool-card:after{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(130,145,255,.55),transparent);transform:scaleX(.25);transition:transform .45s ease}
+#tools .tool-card:hover{transform:translateY(-10px) rotateX(3deg)!important;box-shadow:0 30px 70px rgba(35,45,125,.20)!important}
+#tools .tool-card:hover:after{transform:scaleX(1)}
+#tools .tool-card:hover:before{transform:scale(1.65);opacity:1}
+#tools .tool-card span{width:54px!important;height:54px!important;margin-bottom:19px!important;border-radius:17px!important;background:linear-gradient(145deg,rgba(80,95,255,.15),rgba(0,205,255,.07))!important;border:1px solid rgba(120,135,255,.10);box-shadow:0 12px 30px rgba(60,80,180,.10)!important;transition:transform .45s ease,box-shadow .45s ease!important}
+#tools .tool-card:hover span{transform:translateZ(20px) scale(1.08) rotate(5deg);box-shadow:0 18px 35px rgba(60,80,180,.20)!important}
+#tools .tool-card b{font-size:13px!important;letter-spacing:-.01em}
+#tools .tool-card small{font-size:9px!important;opacity:.72}
+
+/* ---------- DASHBOARD COMMAND CENTER ---------- */
+#dashboard-pro .dashboard-shell{position:relative;overflow:hidden}
+#dashboard-pro .dashboard-shell:before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(100,120,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(100,120,255,.035) 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(to bottom,black,transparent 78%);pointer-events:none}
+#dashboard-pro .dash-hero.premium-hero{min-height:220px!important;border-radius:27px!important;background:radial-gradient(circle at 84% 20%,rgba(37,220,255,.42),transparent 27%),radial-gradient(circle at 15% 115%,rgba(122,75,255,.48),transparent 38%),linear-gradient(125deg,#1c286c 0%,#3e48bd 48%,#0e86b7 100%)!important;box-shadow:0 28px 75px rgba(30,55,170,.28)!important}
+#dashboard-pro .dash-hero.premium-hero:before{content:"";position:absolute;width:280px;height:280px;right:-90px;top:-120px;border:1px solid rgba(255,255,255,.13);border-radius:50%;box-shadow:0 0 0 35px rgba(255,255,255,.025),0 0 0 70px rgba(255,255,255,.018);animation:dashOrbit 8s linear infinite}
+@keyframes dashOrbit{to{transform:rotate(360deg)}}
+#dashboard-pro .dash-hero>div:first-child{position:relative;z-index:2}
+#dashboard-pro .hero-clock{min-width:205px!important;padding:20px!important;border-radius:22px!important;background:rgba(3,10,35,.24)!important;box-shadow:inset 0 1px rgba(255,255,255,.12),0 18px 35px rgba(5,20,65,.16)!important}
+#dashboard-pro .hero-clock strong{font-size:31px!important;letter-spacing:1px!important}
+#dashboard-pro .hero-clock strong:after{content:"";display:inline-block;width:5px;height:5px;margin-left:7px;border-radius:50%;background:#63e6be;box-shadow:0 0 14px #63e6be;vertical-align:middle;animation:clockPulse 1s infinite}
+@keyframes clockPulse{50%{opacity:.25;transform:scale(.7)}}
+#dashboard-pro .dash-stat-grid{position:relative;z-index:2}
+#dashboard-pro .modern-stat{min-height:72px!important;padding:14px 15px!important;border-radius:19px!important;background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.012))!important;box-shadow:inset 0 1px rgba(255,255,255,.035)!important}
+#dashboard-pro .modern-stat:hover{transform:translateY(-6px) scale(1.015)!important;box-shadow:0 20px 45px rgba(35,45,125,.16)!important}
+#dashboard-pro .stat-symbol{width:43px;height:43px;border-radius:14px;box-shadow:0 9px 24px rgba(70,85,255,.12)}
+#dashboard-pro .dash-panel{position:relative;overflow:hidden}
+#dashboard-pro .dash-panel:after{content:"";position:absolute;width:150px;height:150px;right:-100px;top:-100px;border-radius:50%;background:rgba(80,95,255,.08);filter:blur(15px);pointer-events:none}
+#dashboard-pro .activity-item{position:relative;min-height:48px!important;border-bottom:1px solid rgba(120,130,180,.07);transition:transform .3s ease,background .3s ease,padding .3s ease}
+#dashboard-pro .activity-item:last-child{border-bottom:0}
+#dashboard-pro .activity-item:hover{transform:translateX(6px);background:rgba(90,100,255,.06)!important}
+
+/* ---------- TASK MANAGER ---------- */
+#tasks .task-grid{perspective:1200px}
+#tasks .task-card{min-height:205px!important;border-radius:26px!important;background:linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.012))!important;box-shadow:0 18px 50px rgba(15,25,70,.12),inset 0 1px rgba(255,255,255,.035)!important}
+#tasks .task-card:after{content:"TASK";position:absolute;right:17px;bottom:13px;font-size:8px;font-weight:900;letter-spacing:2px;color:rgba(130,140,255,.25);pointer-events:none}
+#tasks .task-card:hover{transform:translateY(-10px) rotateX(2deg)!important;box-shadow:0 30px 75px rgba(35,45,125,.21)!important}
+#tasks .task-card .status{top:16px;right:16px;backdrop-filter:blur(14px);box-shadow:0 6px 18px rgba(30,40,90,.08)}
+#tasks .task-meta{margin-top:auto!important}
+
+/* Staggered reveal */
+#knowledge .knowledge-card:nth-child(2),#tools .tool-card:nth-child(2),#tasks .task-card:nth-child(2){transition-delay:.04s}
+#knowledge .knowledge-card:nth-child(3),#tools .tool-card:nth-child(3),#tasks .task-card:nth-child(3){transition-delay:.08s}
+#knowledge .knowledge-card:nth-child(4),#tools .tool-card:nth-child(4){transition-delay:.12s}
+#knowledge .knowledge-card:nth-child(5),#tools .tool-card:nth-child(5){transition-delay:.16s}
+#knowledge .knowledge-card:nth-child(6),#tools .tool-card:nth-child(6){transition-delay:.20s}
+
+@media(max-width:900px){
+ #tools .tools-grid{grid-template-columns:1fr 1fr}
+ #dashboard-pro .hero-clock{min-width:165px!important}
+}
+@media(max-width:600px){
+ #knowledge .knowledge-card{min-height:220px!important}
+ #tools .tools-grid{grid-template-columns:1fr 1fr;gap:10px}
+ #tools .tool-card{min-height:145px!important;padding:18px!important}
+ #tools .tool-card span{width:46px!important;height:46px!important;font-size:21px!important;margin-bottom:13px!important}
+ #dashboard-pro .dash-hero.premium-hero{min-height:330px!important}
+ #dashboard-pro .hero-clock{width:100%;box-sizing:border-box}
+ #tasks .task-card{min-height:190px!important}
+}
+@media(max-width:430px){
+ #tools .tools-grid{grid-template-columns:1fr 1fr}
+ #tools .tool-card b{font-size:11px!important}
+ #tools .tool-card small{font-size:8px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ .login-shell:before,.login-shell:after,#dashboard-pro .dash-hero.premium-hero:before{animation:none!important}
+ .login-showcase,.login-panel,.knowledge-card,.tool-card,.task-card,.modern-stat{transition:none!important}
+}
+
+/* =========================================================
+   XI TKJ 1 — V8 SIGNATURE UI / THEME-SYNC + LIQUID LOGIN
+   ========================================================= */
+:root{
+  --surface-1:rgba(255,255,255,.88);
+  --surface-2:rgba(255,255,255,.68);
+  --surface-3:rgba(255,255,255,.50);
+  --soft-border:rgba(28,43,90,.10);
+  --soft-shadow:0 22px 70px rgba(35,50,110,.11);
+  --login-tint:linear-gradient(145deg,rgba(64,85,255,.10),rgba(0,190,255,.035));
+  --section-glow:rgba(78,94,255,.10);
+}
+body:not(.dark){
+  --bg:#f6f8ff;
+  --card:rgba(255,255,255,.90);
+  --text:#151b31;
+  --muted:#6f7893;
+  --border:rgba(30,45,90,.10);
+  --panel:rgba(255,255,255,.72);
+  --line:rgba(30,45,90,.09);
+  background:
+    radial-gradient(circle at 8% 12%,rgba(78,94,255,.09),transparent 25%),
+    radial-gradient(circle at 92% 72%,rgba(0,190,255,.07),transparent 23%),
+    var(--bg);
+}
+body.dark{
+  --surface-1:rgba(15,21,43,.90);
+  --surface-2:rgba(15,21,43,.70);
+  --surface-3:rgba(15,21,43,.50);
+  --soft-border:rgba(255,255,255,.09);
+  --soft-shadow:0 28px 85px rgba(0,0,0,.30);
+  --login-tint:linear-gradient(145deg,rgba(72,88,255,.22),rgba(0,190,255,.055));
+  --section-glow:rgba(78,94,255,.16);
+  background:#090d1c;
+}
+
+/* Never let a light theme inherit the old dark login overlay. */
+.account-modal{background:rgba(246,248,255,.72)!important;backdrop-filter:blur(28px) saturate(135%)!important}
+body.dark .account-modal{background:rgba(3,7,18,.74)!important}
+.account-modal-box{background:var(--bg)!important;color:var(--text);border-color:var(--border)!important;box-shadow:var(--soft-shadow)!important}
+
+/* ---------- LIQUID LOGIN SWITCH ---------- */
+.login-shell{
+  position:relative!important;
+  display:grid!important;
+  grid-template-columns:.92fr 1.08fr!important;
+  min-height:650px!important;
+  overflow:hidden!important;
+  background:var(--bg)!important;
+  isolation:isolate;
+}
+.login-shell:before{
+  content:"";position:absolute;z-index:5;pointer-events:none;
+  width:250px;height:250px;border-radius:50%;left:50%;top:50%;
+  transform:translate(-50%,-50%) scale(.72);
+  background:radial-gradient(circle,rgba(105,90,255,.26),rgba(0,200,255,.08) 38%,transparent 70%);
+  filter:blur(22px);opacity:0;transition:opacity .35s ease,transform .75s cubic-bezier(.16,1,.3,1);
+}
+.login-shell.login-transitioning:before{opacity:1;transform:translate(-50%,-50%) scale(1.25)}
+.login-showcase,.login-panel{
+  position:relative!important;
+  min-width:0;
+  width:100%;
+  transition:transform .78s cubic-bezier(.16,1,.3,1),filter .5s ease,opacity .42s ease,background .5s ease!important;
+  will-change:transform;
+}
+.login-showcase{
+  grid-column:1;grid-row:1;z-index:2!important;
+  border-right:1px solid var(--border)!important;border-left:0!important;
+  background:var(--login-tint)!important;
+}
+.login-panel{grid-column:2;grid-row:1;z-index:1!important;background:var(--bg)!important}
+.login-shell.admin-mode .login-showcase{transform:translateX(108%)!important;border-left:1px solid var(--border)!important;border-right:0!important;background:var(--login-tint)!important}
+.login-shell.admin-mode .login-panel{transform:translateX(-84.8%)!important}
+.login-shell.student-mode .login-showcase{transform:translateX(0)!important}
+.login-shell.student-mode .login-panel{transform:translateX(0)!important}
+.login-shell.login-transitioning .login-showcase{filter:saturate(1.15) brightness(1.04)}
+.login-shell.login-transitioning .login-panel{filter:saturate(1.08)}
+.login-showcase:after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,.16) 48%,transparent 62%);
+  transform:translateX(-120%);transition:transform .85s cubic-bezier(.16,1,.3,1);
+}
+.login-shell.login-transitioning .login-showcase:after{transform:translateX(120%)}
+.login-showcase-copy h2,.login-panel-head h2{transition:transform .55s cubic-bezier(.16,1,.3,1),opacity .4s ease}
+.login-shell.admin-mode .login-showcase-copy h2{transform:translateX(3px)}
+.login-shell.admin-mode .login-panel-head h2{transform:translateX(-3px)}
+.modal-login-view{animation:none!important}
+.login-shell.login-transitioning .modal-login-view{opacity:.25;transform:translateX(18px);transition:opacity .18s,transform .28s}
+.login-shell.login-transitioning .modal-login-view.active{transform:translateX(0)}
+.login-showcase-title{font-weight:900!important}
+.login-showcase-title strong{background:linear-gradient(100deg,var(--primary),#7956ff 48%,#17bfe9)!important;background-size:180% auto!important;animation:loginGradient 5s linear infinite}
+.login-panel:before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 90% 8%,var(--section-glow),transparent 28%)}
+.login-panel>*{position:relative;z-index:1}
+body.dark .login-panel:before{background:radial-gradient(circle at 90% 8%,rgba(90,105,255,.12),transparent 28%)}
+
+/* ---------- PREMIUM SECTION ATMOSPHERE ---------- */
+#knowledge,#tools,#tasks,#dashboard-pro{position:relative}
+#knowledge:before,#tools:before,#tasks:before,#dashboard-pro:before{
+  content:"";position:absolute;pointer-events:none;width:320px;height:240px;border-radius:50%;
+  background:var(--section-glow);filter:blur(100px);opacity:.8;left:-120px;top:110px;
+}
+body.dark #knowledge:before,body.dark #tools:before,body.dark #tasks:before,body.dark #dashboard-pro:before{opacity:.9}
+
+/* ---------- MATERIAL: KNOWLEDGE GALLERY ---------- */
+#knowledge .knowledge-grid{gap:18px!important}
+#knowledge .knowledge-card{
+  position:relative;isolation:isolate;min-height:248px!important;padding:26px!important;
+  border:1px solid var(--soft-border)!important;
+  background:linear-gradient(145deg,var(--surface-1),var(--surface-3))!important;
+  box-shadow:var(--soft-shadow),inset 0 1px rgba(255,255,255,.30)!important;
+  transition:transform .48s cubic-bezier(.16,1,.3,1),box-shadow .48s,border-color .35s!important;
+}
+body.dark #knowledge .knowledge-card{background:linear-gradient(145deg,rgba(20,27,53,.90),rgba(12,17,35,.72))!important;box-shadow:0 24px 70px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.04)!important}
+#knowledge .knowledge-card:before{opacity:1!important;inset:0!important;background:linear-gradient(115deg,transparent 18%,rgba(100,115,255,.14) 48%,transparent 62%)!important;transform:translateX(-130%);transition:transform .9s cubic-bezier(.16,1,.3,1)!important}
+#knowledge .knowledge-card:hover:before{transform:translateX(130%)}
+#knowledge .knowledge-card:after{color:rgba(70,85,210,.10)!important;font-size:42px!important}
+body.dark #knowledge .knowledge-card:after{color:rgba(130,140,255,.08)!important}
+#knowledge .knowledge-card:hover{transform:translateY(-11px) scale(1.012)!important;border-color:rgba(83,101,255,.34)!important;box-shadow:0 32px 85px rgba(45,55,145,.18),inset 0 1px rgba(255,255,255,.10)!important}
+#knowledge .knowledge-icon{position:relative;overflow:hidden;width:60px!important;height:60px!important;border-radius:19px!important;background:linear-gradient(145deg,rgba(72,88,255,.16),rgba(0,190,255,.08))!important;box-shadow:0 15px 34px rgba(70,85,255,.15)!important}
+#knowledge .knowledge-icon:after{content:"";position:absolute;width:45px;height:45px;border-radius:50%;border:1px solid rgba(120,140,255,.16);transform:scale(.65);transition:transform .5s ease}
+#knowledge .knowledge-card:hover .knowledge-icon:after{transform:scale(1.25)}
+#knowledge .knowledge-card h3{font-size:18px!important;line-height:1.1!important}
+#knowledge .knowledge-card p{font-size:11px!important;line-height:1.7!important}
+#knowledge .knowledge-card .mini-btn{border-color:var(--soft-border)!important;background:var(--surface-2)!important}
+
+/* ---------- TOOLS: TECH COMMAND DECK ---------- */
+#tools .tools-grid{gap:17px!important}
+#tools .tool-card{
+  min-height:182px!important;padding:24px!important;border-radius:25px!important;
+  border:1px solid var(--soft-border)!important;
+  background:linear-gradient(145deg,var(--surface-1),var(--surface-3))!important;
+  box-shadow:var(--soft-shadow),inset 0 1px rgba(255,255,255,.28)!important;
+  transition:transform .5s cubic-bezier(.16,1,.3,1),box-shadow .45s,border-color .35s!important;
+}
+body.dark #tools .tool-card{background:linear-gradient(145deg,rgba(20,27,53,.90),rgba(12,17,35,.72))!important;box-shadow:0 24px 70px rgba(0,0,0,.25),inset 0 1px rgba(255,255,255,.04)!important}
+#tools .tool-card:before{opacity:.65!important;background:radial-gradient(circle,rgba(100,90,255,.18),transparent 68%)!important}
+#tools .tool-card:after{height:2px!important;background:linear-gradient(90deg,transparent,var(--primary),#20cfff,transparent)!important}
+#tools .tool-card:hover{transform:translateY(-10px) scale(1.015)!important;border-color:rgba(83,101,255,.34)!important;box-shadow:0 32px 82px rgba(45,55,145,.18)!important}
+#tools .tool-card span{position:relative;overflow:hidden;width:58px!important;height:58px!important;border-radius:18px!important;background:linear-gradient(145deg,rgba(72,88,255,.15),rgba(0,190,255,.08))!important;box-shadow:0 14px 35px rgba(70,85,255,.13)!important}
+#tools .tool-card span:after{content:"";position:absolute;inset:-20%;border:1px solid rgba(110,130,255,.18);border-radius:50%;transform:scale(.55);transition:transform .55s ease}
+#tools .tool-card:hover span:after{transform:scale(1.15)}
+#tools .tool-card b{font-size:13px!important}
+#tools .tool-card small{font-size:9.5px!important;line-height:1.6!important}
+
+/* ---------- DASHBOARD: COMMAND CENTER ---------- */
+#dashboard-pro .dashboard-shell{
+  position:relative;overflow:hidden;border-radius:30px!important;
+  background:linear-gradient(145deg,var(--surface-1),var(--surface-3))!important;
+  border-color:var(--soft-border)!important;box-shadow:var(--soft-shadow)!important;
+}
+body.dark #dashboard-pro .dashboard-shell{background:linear-gradient(145deg,rgba(14,20,42,.92),rgba(8,12,28,.78))!important;box-shadow:0 35px 100px rgba(0,0,0,.28)!important}
+#dashboard-pro .dashboard-shell:before{opacity:.55!important;background-image:linear-gradient(rgba(85,100,190,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(85,100,190,.055) 1px,transparent 1px)!important}
+#dashboard-pro .dash-hero.premium-hero{
+  min-height:230px!important;border-radius:28px!important;
+  background:radial-gradient(circle at 84% 15%,rgba(25,220,255,.46),transparent 27%),radial-gradient(circle at 12% 110%,rgba(116,73,255,.50),transparent 40%),linear-gradient(125deg,#263c9c 0%,#514be5 53%,#128fbd 100%)!important;
+  box-shadow:0 30px 85px rgba(45,70,180,.24)!important;
+}
+#dashboard-pro .dash-hero.premium-hero:after{content:"";position:absolute;width:390px;height:390px;right:-175px;top:-180px;border:1px solid rgba(255,255,255,.12);border-radius:50%;box-shadow:0 0 0 45px rgba(255,255,255,.025),0 0 0 90px rgba(255,255,255,.018);animation:dashOrbit 13s linear infinite}
+#dashboard-pro .hero-clock{min-width:215px!important;border-radius:23px!important;background:rgba(3,10,35,.20)!important;border-color:rgba(255,255,255,.16)!important}
+#dashboard-pro .hero-clock strong{font-size:34px!important;letter-spacing:1.5px!important}
+#dashboard-pro .modern-stat{background:linear-gradient(145deg,var(--surface-1),var(--surface-3))!important;border-color:var(--soft-border)!important;box-shadow:0 15px 45px rgba(35,50,110,.08),inset 0 1px rgba(255,255,255,.22)!important}
+body.dark #dashboard-pro .modern-stat{background:linear-gradient(145deg,rgba(20,27,53,.88),rgba(12,17,35,.70))!important;box-shadow:0 18px 55px rgba(0,0,0,.20)!important}
+#dashboard-pro .modern-stat:hover{transform:translateY(-7px) scale(1.015)!important}
+#dashboard-pro .dash-panel{background:linear-gradient(145deg,var(--surface-1),var(--surface-3))!important;border-color:var(--soft-border)!important;box-shadow:0 18px 55px rgba(35,50,110,.08)!important}
+body.dark #dashboard-pro .dash-panel{background:linear-gradient(145deg,rgba(20,27,53,.88),rgba(12,17,35,.70))!important;box-shadow:0 18px 60px rgba(0,0,0,.20)!important}
+#dashboard-pro .activity-item:hover{background:rgba(80,95,255,.07)!important}
+#dashboard-pro .system-list>div{padding-top:5px;padding-bottom:5px}
+
+/* ---------- TASKS: PREMIUM WORKSPACE ---------- */
+#tasks .task-grid{gap:18px!important}
+#tasks .task-card{
+  min-height:220px!important;padding:24px!important;border-radius:27px!important;
+  border:1px solid var(--soft-border)!important;
+  background:linear-gradient(145deg,var(--surface-1),var(--surface-3))!important;
+  box-shadow:var(--soft-shadow),inset 0 1px rgba(255,255,255,.28)!important;
+  transition:transform .5s cubic-bezier(.16,1,.3,1),box-shadow .45s,border-color .35s!important;
+}
+body.dark #tasks .task-card{background:linear-gradient(145deg,rgba(20,27,53,.90),rgba(12,17,35,.72))!important;box-shadow:0 24px 70px rgba(0,0,0,.25),inset 0 1px rgba(255,255,255,.04)!important}
+#tasks .task-card:before{width:190px;height:190px;left:-80px;bottom:-100px;background:radial-gradient(circle,rgba(73,88,255,.17),transparent 68%)!important;filter:blur(12px)!important}
+#tasks .task-card:after{content:"TASK";right:18px;bottom:16px;font-size:8px;letter-spacing:2.5px;color:rgba(75,90,210,.22)!important}
+#tasks .task-card:hover{transform:translateY(-11px) scale(1.012)!important;border-color:rgba(83,101,255,.34)!important;box-shadow:0 32px 85px rgba(45,55,145,.20)!important}
+#tasks .task-card .status{padding:7px 10px!important;border-color:var(--soft-border)!important}
+#tasks .task-meta{padding-top:15px!important;border-color:var(--soft-border)!important}
+#tasks .task-actions .mini-btn{background:var(--surface-2)!important;border-color:var(--soft-border)!important}
+
+/* Better toolbars in both themes */
+#knowledge .feature-toolbar,#tasks .feature-toolbar{background:var(--surface-2)!important;border-color:var(--soft-border)!important;box-shadow:0 15px 45px rgba(35,50,110,.06)!important}
+body.dark #knowledge .feature-toolbar,body.dark #tasks .feature-toolbar{box-shadow:0 15px 45px rgba(0,0,0,.16)!important}
+
+/* Keep reduced-motion accessible */
+@media(prefers-reduced-motion:reduce){
+ .login-shell:before,.login-showcase:after,#dashboard-pro .dash-hero.premium-hero:after{animation:none!important;transition:none!important}
+ .login-showcase,.login-panel,#knowledge .knowledge-card,#tools .tool-card,#tasks .task-card{transition:none!important}
+}
+
+/* =========================================================
+   V9 EMERGENCY LOGIN REBUILD — REAL HORIZONTAL EXCHANGE
+   Fixes mobile 50% collapse/overlap and keeps theme synchronized.
+   ========================================================= */
+.account-modal{background:color-mix(in srgb,var(--bg) 78%,transparent)!important;}
+body.dark .account-modal{background:color-mix(in srgb,var(--bg) 82%,transparent)!important;}
+.account-modal-box{background:var(--bg)!important;color:var(--text)!important;overflow:hidden!important;}
+
+@media(min-width:801px){
+  .login-shell{
+    display:block!important;
+    position:relative!important;
+    width:100%!important;
+    min-height:650px!important;
+    overflow:hidden!important;
+    background:var(--bg)!important;
+  }
+  .login-showcase,.login-panel{
+    position:absolute!important;
+    top:0!important;bottom:0!important;
+    width:50%!important;height:100%!important;
+    box-sizing:border-box!important;
+    transition:transform .92s cubic-bezier(.65,0,.2,1),filter .7s ease,opacity .7s ease,background .5s ease!important;
+  }
+  .login-showcase{left:0!important;right:auto!important;transform:translate3d(0,0,0)!important;}
+  .login-panel{left:auto!important;right:0!important;transform:translate3d(0,0,0)!important;}
+  .login-shell.admin-mode .login-showcase{transform:translate3d(100%,0,0)!important;}
+  .login-shell.admin-mode .login-panel{transform:translate3d(-100%,0,0)!important;}
+  .login-shell.student-mode .login-showcase,.login-shell.student-mode .login-panel{transform:translate3d(0,0,0)!important;}
+}
+
+@media(max-width:800px){
+  .account-modal-box{width:100vw!important;height:100vh!important;max-height:none!important;padding:0!important;border-radius:0!important;overflow:hidden!important;}
+  #accountGuestView.login-shell{
+    position:relative!important;
+    display:block!important;
+    width:200%!important;
+    height:100%!important;
+    min-height:100vh!important;
+    overflow:hidden!important;
+    background:var(--bg)!important;
+    transition:background .45s ease!important;
+  }
+  #accountGuestView .login-showcase,
+  #accountGuestView .login-panel{
+    position:absolute!important;
+    top:0!important;bottom:0!important;
+    width:50%!important;height:100%!important;
+    min-height:100%!important;
+    box-sizing:border-box!important;
+    transition:transform .92s cubic-bezier(.65,0,.2,1),filter .7s ease,opacity .65s ease,background .45s ease!important;
+    will-change:transform;
+  }
+  #accountGuestView .login-showcase{left:0!important;right:auto!important;transform:translate3d(0,0,0)!important;border-right:1px solid var(--border)!important;border-left:0!important;}
+  #accountGuestView .login-panel{left:50%!important;right:auto!important;transform:translate3d(0,0,0)!important;}
+  #accountGuestView.admin-mode .login-showcase{transform:translate3d(100%,0,0)!important;border-left:1px solid var(--border)!important;border-right:0!important;}
+  #accountGuestView.admin-mode .login-panel{transform:translate3d(-100%,0,0)!important;}
+  #accountGuestView.student-mode .login-showcase,#accountGuestView.student-mode .login-panel{transform:translate3d(0,0,0)!important;}
+  #accountGuestView .login-showcase{padding:28px 22px!important;}
+  #accountGuestView .login-panel{padding:28px 22px 22px!important;}
+  #accountGuestView .login-showcase-copy{margin-top:auto!important;margin-bottom:auto!important;}
+  #accountGuestView .login-showcase-copy h2{font-size:clamp(30px,8vw,40px)!important;}
+  #accountGuestView .login-showcase-copy p{font-size:10px!important;max-width:300px!important;}
+  #accountGuestView .login-panel-head h2{font-size:27px!important;}
+  #accountGuestView .auth-choice{margin-left:0!important;margin-right:0!important;}
+  #accountGuestView .modal-login-view{padding-left:0!important;padding-right:0!important;}
+  #accountGuestView .login-security-note{margin-left:0!important;margin-right:0!important;}
+}
+
+/* Theme-safe login surfaces: never force the opposite theme. */
+.login-showcase,.login-panel{background:var(--bg)!important;color:var(--text)!important;}
+.login-showcase{background:var(--login-tint,var(--bg))!important;}
+body.dark .login-showcase{background:radial-gradient(circle at 20% 20%,rgba(83,100,255,.24),transparent 38%),linear-gradient(150deg,#0b1024,#070a15)!important;}
+.login-panel:before{background:radial-gradient(circle at 90% 8%,var(--section-glow),transparent 28%)!important;}
+body.dark .login-panel:before{background:radial-gradient(circle at 90% 8%,rgba(90,105,255,.12),transparent 28%)!important;}
+
+/* More premium section motion without breaking layout. */
+#knowledge .knowledge-card,#tools .tool-card,#tasks .task-card,#dashboard-pro .modern-stat,#dashboard-pro .dash-panel{
+  will-change:transform,box-shadow;
+}
+#knowledge .knowledge-card:hover,#tools .tool-card:hover,#tasks .task-card:hover{transform:translateY(-9px) scale(1.008)!important;}
+
+/* ===== V10 LOGIN TITLE VISIBILITY FIX =====
+   Prevent the gradient layer from rendering as a solid rectangle on mobile.
+*/
+.login-showcase-title strong{
+  display:inline!important;
+  background:none!important;
+  background-image:none!important;
+  -webkit-background-clip:border-box!important;
+  background-clip:border-box!important;
+  color:var(--primary)!important;
+  -webkit-text-fill-color:var(--primary)!important;
+  text-shadow:0 8px 28px rgba(75,86,255,.18);
+}
+body.dark .login-showcase-title strong{
+  color:#7d78ff!important;
+  -webkit-text-fill-color:#7d78ff!important;
+}
+.login-showcase-title{
+  overflow:visible!important;
+}
+@media(max-width:800px){
+  #accountGuestView .login-showcase-copy h2.login-showcase-title{
+    line-height:1.02!important;
+    margin:8px 0 12px!important;
+  }
+}
