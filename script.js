@@ -909,13 +909,13 @@ function saveFaceAttendanceLocal(dateKey,data){
 function faceSession(){
  try{return JSON.parse(sessionStorage.getItem('xi-account-session')||'null')}catch{return null}
 }
-function compressFaceImage(dataUrl,maxSide=3840,quality=.92){
+function compressFaceImage(dataUrl,maxSide=1920,quality=.90){
  return new Promise((resolve,reject)=>{
   const img=new Image();
   img.onload=()=>{
    try{
-    // Target 4K: 3840 px on the longest side. Upscale smaller originals when needed.
-    const scale=maxSide/Math.max(img.width,img.height);
+    // Keep a high-quality but mobile-safe size. Do not upscale small originals.
+    const scale=Math.min(1,maxSide/Math.max(img.width,img.height));
     const w=Math.max(1,Math.round(img.width*scale)),h=Math.max(1,Math.round(img.height*scale));
     const c=document.createElement('canvas');c.width=w;c.height=h;
     const ctx=c.getContext('2d',{alpha:false});
@@ -951,71 +951,12 @@ function wrapWatermarkLine(ctx,text,maxWidth){
 }
 
 function addAttendanceWatermark(dataUrl,record){
- return new Promise((resolve,reject)=>{
-  const img=new Image();
-  img.onload=()=>{
-   try{
-    const c=document.createElement('canvas');
-    c.width=img.naturalWidth||img.width;
-    c.height=img.naturalHeight||img.height;
-    const ctx=c.getContext('2d');
-    ctx.drawImage(img,0,0,c.width,c.height);
-
-    // Watermark kecil dan clean di kanan bawah seperti contoh.
-    const pad=Math.max(14,Math.round(c.width*.018));
-    const fs=Math.max(13,Math.round(c.width*.020));
-    const smallFs=Math.max(12,Math.round(c.width*.017));
-    const maxTextWidth=Math.min(c.width*.78,Math.max(220,c.width-pad*2));
-    const location=String(record.locationText||record.address||'Lokasi tidak tersedia')
-      .replace(/\s*,\s*/g,', ');
-
-    ctx.textBaseline='top';
-    ctx.font='600 '+fs+'px "Trebuchet MS", "Segoe UI", Arial, sans-serif';
-    const locationLines=wrapWatermarkLine(ctx,location,maxTextWidth);
-    ctx.font='600 '+smallFs+'px "Trebuchet MS", "Segoe UI", Arial, sans-serif';
-    const dateLine=formatAttendanceWatermarkDate(record.date,record.time);
-
-    const lineH=Math.round(fs*1.18);
-    const dateH=Math.round(smallFs*1.25);
-    const boxH=pad+locationLines.length*lineH+dateH+pad;
-    const y=c.height-boxH-pad;
-
-    // Panel gelap tipis + shadow agar premium dan tetap terbaca.
-    ctx.fillStyle='rgba(0,0,0,.20)';
-    const widths=[];
-    ctx.font='600 '+fs+'px "Trebuchet MS", "Segoe UI", Arial, sans-serif';
-    locationLines.forEach(x=>widths.push(ctx.measureText(x).width));
-    ctx.font='600 '+smallFs+'px "Trebuchet MS", "Segoe UI", Arial, sans-serif';
-    widths.push(ctx.measureText(dateLine).width);
-    const boxW=Math.min(c.width-pad*2,Math.max(...widths)+pad*2);
-    const x=c.width-boxW-pad;
-    ctx.beginPath();
-    const r=Math.max(8,Math.round(fs*.45));
-    ctx.roundRect(x,y,boxW,boxH,r);
-    ctx.fill();
-
-    ctx.shadowColor='rgba(0,0,0,.72)';
-    ctx.shadowBlur=Math.max(3,Math.round(fs*.45));
-    ctx.shadowOffsetY=1;
-    ctx.fillStyle='#fff';
-    ctx.font='600 '+fs+'px "Trebuchet MS", "Segoe UI", Arial, sans-serif';
-    let ty=y+pad;
-    locationLines.forEach(line=>{
-      ctx.fillText(line,x+pad,ty);
-      ty+=lineH;
-    });
-    ctx.font='600 '+smallFs+'px "Trebuchet MS", "Segoe UI", Arial, sans-serif';
-    ctx.fillStyle='rgba(255,255,255,.92)';
-    ctx.fillText(dateLine,x+pad,ty+1);
-    ctx.shadowColor='transparent';
-
-    resolve(c.toDataURL('image/jpeg',.95));
-   }catch(e){reject(e)}
-  };
-  img.onerror=()=>reject(new Error('Foto gagal diproses'));
-  img.src=dataUrl;
- });
+ // Lokasi, koordinat, akurasi, Maps URL, tanggal, dan waktu disimpan sebagai
+ // metadata absensi. JANGAN membakar (burn-in) informasi lokasi ke gambar.
+ // Foto bukti harus tetap merupakan foto asli wajah siswa.
+ return Promise.resolve(dataUrl);
 }
+
 function showFaceAttendanceThanks(record={}){
  stopFaceCamera();
  const box=document.querySelector('#faceAttendanceModal .face-attendance-box');
@@ -1103,7 +1044,7 @@ function stopFaceCamera(){if(faceStream){faceStream.getTracks().forEach(t=>t.sto
 async function startFaceCamera(){
  if(!navigator.mediaDevices?.getUserMedia){setFaceStatus('Kamera tidak didukung. Gunakan tombol Pilih Foto.');return}
  try{
-  faceStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:3840},height:{ideal:2160}},audio:false});
+  faceStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1920,max:1920},height:{ideal:1080,max:1080}},audio:false});
   const v=document.getElementById('faceCameraVideo');v.srcObject=faceStream;
   try{await v.play()}catch(_){}
   document.getElementById('faceCameraPlaceholder').style.display='none';document.getElementById('faceCameraCapture').disabled=false;
@@ -1219,31 +1160,67 @@ async function getReadableLocation(lat,lon){
  }catch(e){return fallback}
 }
 async function submitFaceAttendance(){
- const u=faceSession();if(!u||u.role!=='student')return toast('Login sebagai siswa terlebih dahulu.');
+ const u=faceSession();
+ if(!u||u.role!=='student')return toast('Login sebagai siswa terlebih dahulu.');
  if(!faceCapturedData)return toast('Ambil foto wajah terlebih dahulu.');
  const dateKey=localDateKey(),now=new Date(),data=getFaceAttendanceLocal(dateKey);
  if(data[u.nisn])return toast('Kamu sudah absen foto hari ini.');
- setFaceStatus('Mengambil lokasi real-time... izinkan akses lokasi untuk melanjutkan.','ready');
- let loc;
- try{loc=await getLiveFaceLocation();}catch(e){setFaceStatus('Lokasi diperlukan untuk absensi foto. Aktifkan GPS dan izinkan lokasi, lalu coba lagi.','error');return toast('Lokasi belum diizinkan.');}
- const mapsUrl='https://www.google.com/maps?q='+encodeURIComponent(loc.latitude+','+loc.longitude);
- setFaceStatus('Mencari nama jalan, desa, kecamatan, dan kota...','ready');
- const locationText=await getReadableLocation(loc.latitude,loc.longitude);
- let record={nisn:u.nisn,name:u.name,date:dateKey,time:now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}),image:faceCapturedData,source:DRIVE_UPLOAD_URL?'local+drive':'local',latitude:loc.latitude,longitude:loc.longitude,accuracy:loc.accuracy,mapsUrl:mapsUrl,locationText:locationText,address:locationText};
- setFaceStatus('Menempelkan lokasi, tanggal, dan waktu ke foto...','ready');
- try{record.image=await addAttendanceWatermark(faceCapturedData,record);faceCapturedData=record.image;showFacePreview(record.image,record.date+' • '+record.time+' • Lokasi ditempel di foto');}catch(e){return toast('Watermark foto gagal dibuat. Coba ambil foto lagi.')}
- data[u.nisn]=record;saveFaceAttendanceLocal(dateKey,data);
- // Absen foto otomatis menjadi H pada absensi manual hari yang sama.
- const manual=getManualAttendanceLocal(dateKey);
- manual[u.nisn]='H';
- localStorage.setItem('xi-attendance-'+dateKey,JSON.stringify(manual));
- syncManualAttendanceToSheets({date:dateKey,nisn:u.nisn,name:u.name,status:'H',keterangan:'H',metode:'FOTO MUKA'});
- if(DRIVE_UPLOAD_URL)uploadFaceToDrive(record);
- setFaceStatus('Absensi foto berhasil. Status manual otomatis menjadi H.','success');
- document.getElementById('faceSubmitActions').hidden=true;document.getElementById('faceCameraCapture').disabled=true;
+
+ // GPS tetap dicatat sebagai DATA ABSENSI, tetapi tidak ditempel ke foto.
+ setFaceStatus('Mengambil lokasi real-time untuk data absensi...','ready');
+ let loc=null;
+ try{
+  loc=await getLiveFaceLocation();
+ }catch(e){
+  // Foto tetap boleh dikirim tanpa GPS; backend menyimpan lokasi jika tersedia.
+  setFaceStatus('Lokasi tidak tersedia. Foto tetap bisa dikirim; lokasi tidak akan ditempel ke foto.','ready');
+ }
+
+ const mapsUrl=loc?'https://www.google.com/maps?q='+encodeURIComponent(loc.latitude+','+loc.longitude):'';
+ let locationText='';
+ if(loc){
+  setFaceStatus('Membaca lokasi untuk metadata absensi...','ready');
+  locationText=await getReadableLocation(loc.latitude,loc.longitude);
+ }
+
+ const record={
+  nisn:u.nisn,
+  name:u.name,
+  date:dateKey,
+  time:now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}),
+  image:faceCapturedData,
+  source:DRIVE_UPLOAD_URL?'local+drive':'local',
+  latitude:loc?.latitude||'',
+  longitude:loc?.longitude||'',
+  accuracy:loc?.accuracy||'',
+  mapsUrl,
+  locationText,
+  address:locationText
+ };
+
+ setFaceStatus('Menyiapkan foto asli tanpa watermark lokasi...','ready');
+ // Explicitly keep the captured image unchanged.
+ record.image=faceCapturedData;
+ faceCapturedData=record.image;
+ showFacePreview(record.image,record.date+' • '+record.time+(loc?' • Lokasi disimpan sebagai data':' • Tanpa lokasi'));
+
+ data[u.nisn]=record;
+ saveFaceAttendanceLocal(dateKey,data);
+
+ // Drive backend saveFace_() juga menyimpan status H ke sheet ABSENSI.
+ if(DRIVE_UPLOAD_URL){
+  uploadFaceToDrive(record);
+ }else{
+  setFaceStatus('Absensi tersimpan di perangkat. Hubungkan Google Drive untuk sinkronisasi.','success');
+ }
+
+ setFaceStatus(loc?'Absensi foto berhasil. Lokasi tersimpan sebagai metadata, tidak ditempel di foto.':'Absensi foto berhasil. Foto tidak diberi watermark lokasi.','success');
+ document.getElementById('faceSubmitActions').hidden=true;
+ document.getElementById('faceCameraCapture').disabled=true;
  showFaceAttendanceThanks(record);
- toast('Absensi foto + lokasi berhasil dikirim');
+ toast(loc?'Absensi foto berhasil — lokasi hanya sebagai data.':'Absensi foto berhasil.');
 }
+
 function uploadFaceToDrive(record){
  try{
   const iframe=document.createElement('iframe');iframe.name='faceDriveFrame_'+Date.now();iframe.style.display='none';document.body.appendChild(iframe);
