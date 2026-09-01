@@ -1223,49 +1223,40 @@ async function submitFaceAttendance(){
 
 function postFacePayload(url,fields){
  return new Promise((resolve,reject)=>{
-  const body=new URLSearchParams();
-  Object.entries(fields).forEach(([k,v])=>body.set(k,String(v??'')));
-  fetch(url,{method:'POST',mode:'no-cors',credentials:'omit',body})
-   .then(()=>resolve(true))
-   .catch(err=>reject(err));
+  const id='faceUploadFrame_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+  const iframe=document.createElement('iframe'); iframe.name=id; iframe.style.cssText='position:fixed;width:1px;height:1px;left:-9999px;opacity:0;pointer-events:none;border:0;'; document.body.appendChild(iframe);
+  const form=document.createElement('form'); form.method='POST'; form.action=url; form.target=id; form.enctype='application/x-www-form-urlencoded'; form.encoding='application/x-www-form-urlencoded'; form.style.display='none';
+  Object.entries(fields).forEach(([k,v])=>{const input=document.createElement('textarea'); input.name=k; input.value=String(v??''); form.appendChild(input)});
+  document.body.appendChild(form);
+  let done=false; const cleanup=()=>{try{form.remove()}catch(e){} try{iframe.remove()}catch(e){}};
+  const finish=(ok,err)=>{if(done)return;done=true;cleanup();ok?resolve(true):reject(err||new Error('Upload gagal'))};
+  iframe.onload=()=>setTimeout(()=>finish(true),700);
+  try{form.submit()}catch(err){finish(false,err);return}
+  setTimeout(()=>finish(true),12000);
  });
 }
 
 async function verifyFaceUpload(date,nisn,attempt=0){
  try{
   const res=await driveJsonp(date);
-  const record=(res?.records||[]).find(r=>String(r.nisn||'')===String(nisn));
+  const records=Array.isArray(res?.records)?res.records:[];
+  const record=records.find(r=>String(r.nisn||'').trim()===String(nisn||'').trim() && String(r.date||'')===String(date||''));
   if(record)return record;
  }catch(e){}
- if(attempt<3){await new Promise(r=>setTimeout(r,1800));return verifyFaceUpload(date,nisn,attempt+1)}
+ if(attempt<5){await new Promise(r=>setTimeout(r,2000));return verifyFaceUpload(date,nisn,attempt+1)}
  return null;
 }
 
 async function uploadFaceToDrive(record){
- const imageData=String(record.image||'').split(',')[1]||'';
- if(!imageData)return {ok:false,error:'Data foto kosong setelah diproses.'};
- const fields={
-  action:'uploadFaceAttendance',date:record.date,time:record.time,nisn:record.nisn,name:record.name,
-  mimeType:'image/jpeg',imageData,latitude:record.latitude,longitude:record.longitude,
-  accuracy:record.accuracy,mapsUrl:record.mapsUrl,locationText:record.locationText||record.address||'',kelas:'XI TKJ 1'
- };
- try{
-  await postFacePayload(DRIVE_UPLOAD_URL,fields);
- }catch(firstError){
-  // Fallback for browsers that refuse fetch(no-cors).
-  try{
-   const iframe=document.createElement('iframe');iframe.name='faceDriveFallback_'+Date.now();iframe.style.display='none';document.body.appendChild(iframe);
-   const form=document.createElement('form');form.method='POST';form.action=DRIVE_UPLOAD_URL;form.target=iframe.name;form.enctype='application/x-www-form-urlencoded';form.style.display='none';
-   Object.entries(fields).forEach(([k,v])=>{const input=document.createElement('textarea');input.name=k;input.value=String(v??'');form.appendChild(input)});
-   document.body.appendChild(form);form.submit();
-   await new Promise(r=>setTimeout(r,1800));
-   form.remove();iframe.remove();
-  }catch(e){return {ok:false,error:'Browser gagal mengirim data ke Google Apps Script.'}}
- }
+ const imageData=String(record.image||'');
+ if(!/^data:image\/jpe?g;base64,/i.test(imageData))return {ok:false,error:'Foto belum berupa JPEG yang valid.'};
+ const base64=imageData.split(',')[1]||'';
+ if(!base64)return {ok:false,error:'Data foto kosong setelah diproses.'};
+ if(base64.length>950000)return {ok:false,error:'Foto masih terlalu besar. Ambil ulang foto agar ukurannya lebih kecil.'};
+ const fields={action:'uploadFaceAttendance',date:record.date,time:record.time,nisn:record.nisn,name:record.name,mimeType:'image/jpeg',imageData:base64,latitude:record.latitude,longitude:record.longitude,accuracy:record.accuracy,mapsUrl:record.mapsUrl,locationText:record.locationText||record.address||'',kelas:'XI TKJ 1'};
+ try{await postFacePayload(DRIVE_UPLOAD_URL,fields)}catch(e){return {ok:false,error:'Browser gagal mengirim foto ke Google Apps Script: '+(e.message||e)}}
  const uploaded=await verifyFaceUpload(record.date,record.nisn);
- if(!uploaded){
-  return {ok:false,error:'Foto belum terdeteksi di Google Drive. Pastikan Apps Script V17 sudah di-deploy sebagai Web App (Execute as: Me, Who has access: Anyone), lalu gunakan URL /exec yang terbaru.'};
- }
+ if(!uploaded)return {ok:false,error:'Server menerima pengiriman tetapi foto belum muncul di Google Drive. Pastikan deployment Apps Script memakai Web App /exec, Execute as: Me, dan akses Anyone.'};
  return {ok:true,record:uploaded};
 }
 function driveJsonp(dateKey){
