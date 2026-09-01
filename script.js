@@ -1263,31 +1263,37 @@ async function submitFaceAttendance(){
   return toast('Drive gagal diakses: '+(e?.message||'cek deployment Apps Script'));
  }
 
- setFaceStatus('Mengambil lokasi real-time untuk data absensi...','ready');
+ // GPS TIDAK BOLEH MEMBLOKIR UPLOAD FOTO.
+ // Upload dimulai segera; lokasi dicoba di background.
+ setFaceStatus('Mengirim foto bersih ke Google Drive...','ready');
  let loc=null;
- try{loc=await getLiveFaceLocation()}catch(e){
-  setFaceStatus('Lokasi tidak tersedia. Foto tetap bisa dikirim; lokasi tidak ditempel di foto.','ready');
- }
- const mapsUrl=loc?'https://www.google.com/maps?q='+encodeURIComponent(loc.latitude+','+loc.longitude):'';
- let locationText='';
- if(loc){
-  // Jangan menunggu reverse-geocoding. GPS sudah cukup sebagai metadata.
-  // Alamat jalan hanya pelengkap dan tidak boleh memblokir upload foto.
-  locationText='Lokasi GPS tersimpan';
- }
+ const gpsPromise=getLiveFaceLocation().then(v=>{loc=v;return v}).catch(()=>null);
 
  const record={
   nisn:u.nisn,name:u.name,date:dateKey,
   time:now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}),
   image:faceCapturedData,source:'drive',
-  latitude:loc?.latitude||'',longitude:loc?.longitude||'',accuracy:loc?.accuracy||'',
-  mapsUrl,locationText,address:locationText
+  latitude:'',longitude:'',accuracy:'',mapsUrl:'',locationText:'',address:''
  };
+
+ // Beri GPS kesempatan sebentar saja, TANPA pernah menunggu GPS
+ // sebagai syarat utama upload. Kalau belum ada, foto tetap dikirim.
+ await Promise.race([
+   gpsPromise,
+   new Promise(resolve=>setTimeout(resolve,1200))
+ ]);
+ if(loc){
+   record.latitude=loc.latitude;
+   record.longitude=loc.longitude;
+   record.accuracy=loc.accuracy;
+   record.mapsUrl='https://www.google.com/maps?q='+encodeURIComponent(loc.latitude+','+loc.longitude);
+   record.locationText='Lokasi GPS tersimpan';
+   record.address=record.locationText;
+ }
 
  data[u.nisn]=record;
  saveFaceAttendanceLocal(dateKey,data);
- showFacePreview(record.image,record.date+' • '+record.time+(loc?' • Lokasi disimpan sebagai data':' • Tanpa lokasi'));
- setFaceStatus('Mengirim foto bersih ke Google Drive...','ready');
+ showFacePreview(record.image,record.date+' • '+record.time+(loc?' • Lokasi disimpan sebagai data':' • Lokasi akan disimpan jika GPS tersedia'));
 
  const result=await uploadFaceToDrive(record);
  if(!result.ok){
