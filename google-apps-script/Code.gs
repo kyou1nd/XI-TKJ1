@@ -19,7 +19,7 @@ const SPREADSHEET_ID = '1cNhhSqJkimc2cwoT2djXZzoCZX1bl2gtcmVtcNH-yew';
 const MANUAL_SHEET = 'ABSENSI';
 const FACE_SHEET = 'Absensi Foto Muka';
 
-const BACKEND_VERSION = 'XI-TKJ1-BARCODE-FACE-UPLOAD-V18-FIX-2026-09-01';
+const BACKEND_VERSION = 'XI-TKJ1-FACE-UPLOAD-V19-FRESH-FILE-2026-09-01';
 const TZ = 'Asia/Jakarta';
 
 
@@ -885,6 +885,15 @@ function saveFace_(p) {
     /*
      * Kalau belum ada, buat file baru.
      */
+
+    /* Jika ada foto lama untuk tanggal + NISN yang sama,
+       hapus/trash lalu buat file baru dari foto terbaru. */
+    if (file) {
+      try { file.setTrashed(true); } catch (trashErr) {
+        return json_({ok:false,error:'Foto lama ditemukan tetapi tidak bisa diganti: '+trashErr.message});
+      }
+      file = null;
+    }
 
     if (!file) {
 
