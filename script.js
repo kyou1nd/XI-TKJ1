@@ -909,12 +909,12 @@ function saveFaceAttendanceLocal(dateKey,data){
 function faceSession(){
  try{return JSON.parse(sessionStorage.getItem('xi-account-session')||'null')}catch{return null}
 }
-function compressFaceImage(dataUrl,maxSide=1920,quality=.90){
+function compressFaceImage(dataUrl,maxSide=1280,quality=.78){
  return new Promise((resolve,reject)=>{
   const img=new Image();
   img.onload=()=>{
    try{
-    // Keep a high-quality but mobile-safe size. Do not upscale small originals.
+    // Keep the original photo clean, but make the upload small enough for Apps Script/mobile.
     const scale=Math.min(1,maxSide/Math.max(img.width,img.height));
     const w=Math.max(1,Math.round(img.width*scale)),h=Math.max(1,Math.round(img.height*scale));
     const c=document.createElement('canvas');c.width=w;c.height=h;
@@ -922,7 +922,10 @@ function compressFaceImage(dataUrl,maxSide=1920,quality=.90){
     ctx.imageSmoothingEnabled=true;
     ctx.imageSmoothingQuality='high';
     ctx.drawImage(img,0,0,w,h);
-    resolve(c.toDataURL('image/jpeg',quality));
+    let q=quality,out=c.toDataURL('image/jpeg',q);
+    // Target <= ~450 KB so the POST body remains reliable on phones.
+    while(out.length>600000 && q>.52){q-=.05;out=c.toDataURL('image/jpeg',q)}
+    resolve(out);
    }catch(e){reject(e)}
   };
   img.onerror=()=>reject(new Error('Foto gagal diproses'));
@@ -1166,16 +1169,24 @@ async function submitFaceAttendance(){
  const dateKey=localDateKey(),now=new Date(),data=getFaceAttendanceLocal(dateKey);
  if(data[u.nisn])return toast('Kamu sudah absen foto hari ini.');
 
- // GPS tetap dicatat sebagai DATA ABSENSI, tetapi tidak ditempel ke foto.
- setFaceStatus('Mengambil lokasi real-time untuk data absensi...','ready');
- let loc=null;
+ setFaceStatus('Memeriksa koneksi Google Drive...','ready');
+ if(!DRIVE_UPLOAD_URL){
+  setFaceStatus('URL Google Drive belum dipasang.','error');
+  return toast('Google Drive belum terhubung.');
+ }
  try{
-  loc=await getLiveFaceLocation();
+  const ping=await testManualAttendanceConnection();
+  if(!ping?.ok)throw new Error(ping?.error||'Backend Drive tidak siap');
  }catch(e){
-  // Foto tetap boleh dikirim tanpa GPS; backend menyimpan lokasi jika tersedia.
-  setFaceStatus('Lokasi tidak tersedia. Foto tetap bisa dikirim; lokasi tidak akan ditempel ke foto.','ready');
+  setFaceStatus('Google Drive belum siap. Pastikan Web App Apps Script sudah di-deploy sebagai Anyone dan URL /exec benar.','error');
+  return toast('Drive gagal diakses: '+(e?.message||'cek deployment Apps Script'));
  }
 
+ setFaceStatus('Mengambil lokasi real-time untuk data absensi...','ready');
+ let loc=null;
+ try{loc=await getLiveFaceLocation()}catch(e){
+  setFaceStatus('Lokasi tidak tersedia. Foto tetap bisa dikirim; lokasi tidak ditempel di foto.','ready');
+ }
  const mapsUrl=loc?'https://www.google.com/maps?q='+encodeURIComponent(loc.latitude+','+loc.longitude):'';
  let locationText='';
  if(loc){
@@ -1184,68 +1195,78 @@ async function submitFaceAttendance(){
  }
 
  const record={
-  nisn:u.nisn,
-  name:u.name,
-  date:dateKey,
+  nisn:u.nisn,name:u.name,date:dateKey,
   time:now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}),
-  image:faceCapturedData,
-  source:DRIVE_UPLOAD_URL?'local+drive':'local',
-  latitude:loc?.latitude||'',
-  longitude:loc?.longitude||'',
-  accuracy:loc?.accuracy||'',
-  mapsUrl,
-  locationText,
-  address:locationText
+  image:faceCapturedData,source:'drive',
+  latitude:loc?.latitude||'',longitude:loc?.longitude||'',accuracy:loc?.accuracy||'',
+  mapsUrl,locationText,address:locationText
  };
-
- setFaceStatus('Menyiapkan foto asli tanpa watermark lokasi...','ready');
- // Explicitly keep the captured image unchanged.
- record.image=faceCapturedData;
- faceCapturedData=record.image;
- showFacePreview(record.image,record.date+' • '+record.time+(loc?' • Lokasi disimpan sebagai data':' • Tanpa lokasi'));
 
  data[u.nisn]=record;
  saveFaceAttendanceLocal(dateKey,data);
+ showFacePreview(record.image,record.date+' • '+record.time+(loc?' • Lokasi disimpan sebagai data':' • Tanpa lokasi'));
+ setFaceStatus('Mengirim foto bersih ke Google Drive...','ready');
 
- // Drive backend saveFace_() juga menyimpan status H ke sheet ABSENSI.
- if(DRIVE_UPLOAD_URL){
-  uploadFaceToDrive(record);
- }else{
-  setFaceStatus('Absensi tersimpan di perangkat. Hubungkan Google Drive untuk sinkronisasi.','success');
+ const result=await uploadFaceToDrive(record);
+ if(!result.ok){
+  delete data[u.nisn];saveFaceAttendanceLocal(dateKey,data);
+  setFaceStatus(result.error||'Foto gagal dikirim ke Google Drive.','error');
+  return toast(result.error||'Foto gagal dikirim ke Google Drive.');
  }
 
- setFaceStatus(loc?'Absensi foto berhasil. Lokasi tersimpan sebagai metadata, tidak ditempel di foto.':'Absensi foto berhasil. Foto tidak diberi watermark lokasi.','success');
+ setFaceStatus(loc?'Absensi berhasil. Foto bersih tersimpan di Drive; lokasi hanya sebagai metadata.':'Absensi berhasil. Foto bersih tersimpan di Drive tanpa watermark lokasi.','success');
  document.getElementById('faceSubmitActions').hidden=true;
  document.getElementById('faceCameraCapture').disabled=true;
- showFaceAttendanceThanks(record);
- toast(loc?'Absensi foto berhasil — lokasi hanya sebagai data.':'Absensi foto berhasil.');
+ showFaceAttendanceThanks(result.record||record);
+ toast('✓ Foto absensi berhasil masuk Google Drive.');
 }
 
-function uploadFaceToDrive(record){
+function postFacePayload(url,fields){
+ return new Promise((resolve,reject)=>{
+  const body=new URLSearchParams();
+  Object.entries(fields).forEach(([k,v])=>body.set(k,String(v??'')));
+  fetch(url,{method:'POST',mode:'no-cors',credentials:'omit',body})
+   .then(()=>resolve(true))
+   .catch(err=>reject(err));
+ });
+}
+
+async function verifyFaceUpload(date,nisn,attempt=0){
  try{
-  const iframe=document.createElement('iframe');iframe.name='faceDriveFrame_'+Date.now();iframe.style.display='none';document.body.appendChild(iframe);
-  const form=document.createElement('form');
-  form.method='POST';
-  form.action=DRIVE_UPLOAD_URL;
-  form.target=iframe.name;
-  form.enctype='application/x-www-form-urlencoded';
-  form.acceptCharset='UTF-8';
-  form.style.display='none';
-  const fields={action:'uploadFaceAttendance',date:record.date,time:record.time,nisn:record.nisn,name:record.name,mimeType:'image/jpeg',imageData:record.image.split(',')[1],latitude:record.latitude,longitude:record.longitude,accuracy:record.accuracy,mapsUrl:record.mapsUrl,locationText:record.locationText||record.address||''};
-  Object.entries(fields).forEach(([k,v])=>{
-    const input=document.createElement('textarea');
-    input.name=k;
-    input.value=String(v??'');
-    input.style.display='none';
-    form.appendChild(input);
-  });
-  document.body.appendChild(form);
-  iframe.addEventListener('load',()=>{
-    setFaceStatus('Foto sudah dikirim ke Google Drive. Cek folder Drive untuk memastikan file masuk.','success');
-  },{once:true});
-  form.submit();
-  setTimeout(()=>{form.remove();iframe.remove()},20000);
- }catch(e){toast('Foto tersimpan lokal, tetapi pengiriman Drive gagal.')}
+  const res=await driveJsonp(date);
+  const record=(res?.records||[]).find(r=>String(r.nisn||'')===String(nisn));
+  if(record)return record;
+ }catch(e){}
+ if(attempt<3){await new Promise(r=>setTimeout(r,1800));return verifyFaceUpload(date,nisn,attempt+1)}
+ return null;
+}
+
+async function uploadFaceToDrive(record){
+ const imageData=String(record.image||'').split(',')[1]||'';
+ if(!imageData)return {ok:false,error:'Data foto kosong setelah diproses.'};
+ const fields={
+  action:'uploadFaceAttendance',date:record.date,time:record.time,nisn:record.nisn,name:record.name,
+  mimeType:'image/jpeg',imageData,latitude:record.latitude,longitude:record.longitude,
+  accuracy:record.accuracy,mapsUrl:record.mapsUrl,locationText:record.locationText||record.address||'',kelas:'XI TKJ 1'
+ };
+ try{
+  await postFacePayload(DRIVE_UPLOAD_URL,fields);
+ }catch(firstError){
+  // Fallback for browsers that refuse fetch(no-cors).
+  try{
+   const iframe=document.createElement('iframe');iframe.name='faceDriveFallback_'+Date.now();iframe.style.display='none';document.body.appendChild(iframe);
+   const form=document.createElement('form');form.method='POST';form.action=DRIVE_UPLOAD_URL;form.target=iframe.name;form.enctype='application/x-www-form-urlencoded';form.style.display='none';
+   Object.entries(fields).forEach(([k,v])=>{const input=document.createElement('textarea');input.name=k;input.value=String(v??'');form.appendChild(input)});
+   document.body.appendChild(form);form.submit();
+   await new Promise(r=>setTimeout(r,1800));
+   form.remove();iframe.remove();
+  }catch(e){return {ok:false,error:'Browser gagal mengirim data ke Google Apps Script.'}}
+ }
+ const uploaded=await verifyFaceUpload(record.date,record.nisn);
+ if(!uploaded){
+  return {ok:false,error:'Foto belum terdeteksi di Google Drive. Pastikan Apps Script V17 sudah di-deploy sebagai Web App (Execute as: Me, Who has access: Anyone), lalu gunakan URL /exec yang terbaru.'};
+ }
+ return {ok:true,record:uploaded};
 }
 function driveJsonp(dateKey){
  return new Promise((resolve,reject)=>{

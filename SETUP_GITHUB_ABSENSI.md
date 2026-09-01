@@ -36,3 +36,6 @@ Versi ini menambahkan sistem Barcode/QR siswa:
 6. Siswa dapat membuka akun → menu Navigasi Kelas → **Barcode Saya** untuk menampilkan barcode pribadinya.
 
 Catatan: scanner menggunakan `BarcodeDetector` bawaan browser. Chrome/Edge versi terbaru di Android/desktop direkomendasikan. Jika browser tidak mendukung, tersedia opsi **Pilih gambar barcode** di scanner.
+
+
+V17 upload foto: foto dikompresi maksimal sekitar 1280px/600KB, dikirim via POST, lalu diverifikasi kembali melalui daftar foto Drive. Jika belum muncul, frontend menampilkan error deployment Apps Script.
