@@ -19,7 +19,7 @@ const SPREADSHEET_ID = '1cNhhSqJkimc2cwoT2djXZzoCZX1bl2gtcmVtcNH-yew';
 const MANUAL_SHEET = 'ABSENSI';
 const FACE_SHEET = 'Absensi Foto Muka';
 
-const BACKEND_VERSION = 'XI-TKJ1-BARCODE-FACE-FINAL-2026-08-31';
+const BACKEND_VERSION = 'XI-TKJ1-BARCODE-FACE-CLEAN-PHOTO-2026-09-01';
 const TZ = 'Asia/Jakarta';
 
 
